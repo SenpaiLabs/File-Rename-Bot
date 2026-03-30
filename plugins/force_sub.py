@@ -25,7 +25,7 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 # pyrogram imports
 from pyrogram import Client, filters, enums 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from pyrogram.errors import UserNotParticipant
+from pyrogram.errors import UserNotParticipant, ChatAdminRequired
 
 # extra imports
 from config import Config
@@ -41,6 +41,9 @@ async def not_subscribed(_, client, message):
         user = await client.get_chat_member(Config.FORCE_SUB, message.from_user.id)
         return user.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]
     except UserNotParticipant:
+        return True
+    except ChatAdminRequired:
+        # Bot doesn't have admin privileges, assume user is not subscribed
         return True
     except Exception as e:
         print(f"Error checking subscription: {e}")
@@ -68,7 +71,7 @@ async def forces_sub(client, message):
             return await message.reply_text("Sᴏʀʀy Yᴏᴜ'ʀᴇ Bᴀɴɴᴇᴅ Tᴏ Uꜱᴇ Mᴇ")
         elif user.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR]:
             return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
-    except UserNotParticipant:
+    except (UserNotParticipant, ChatAdminRequired):
         return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
     return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
     
