@@ -76,7 +76,7 @@ class Config:
 #                    BOT STRINGS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class Strings:
+class senpai:
 
     # ── /start ───────────────────────────────────────
     START_TXT = """<b>ʜᴀɪ, {} 👋
@@ -223,7 +223,3 @@ class Strings:
 ┣⪼ 🚀 ꜱᴘᴇᴇᴅ : {3}/s
 ┣⪼ ⏰ ᴇᴛᴀ   : {4}
 ╰━━━━━━━━◉🔥◉━━━━━━━━╯</b>"""
--e 
-
-# backward-compatible alias — baaki code `senpai` import karta hai
-senpai = Strings
