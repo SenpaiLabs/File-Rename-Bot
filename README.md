@@ -2,7 +2,7 @@
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
-<img src="https://readme-typing-svg.herokuapp.com/?font=Orbitron&size=28&duration=3000&pause=500&color=4169E1&center=true&vCenter=true&width=700&lines=𓆩+SENPAI+RENAME+BOT+𓆪;No+Updates.+Just+Upgrades.;Powered+By+SenpaiLabs+⚡" alt="Typing SVG" />
+<img src="https://readme-typing-svg.herokuapp.com/?font=Orbitron&size=28&duration=3000&pause=500&color=4169E1&center=true&vCenter=true&width=700&lines=𓆩+SENPAI+RENAME+BOT+𓆪;Powered+By+SenpaiLabs+⚡" alt="Typing SVG" />
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
@@ -47,7 +47,6 @@
 
 | Bot | Link |
 |:---:|:---:|
-| 🤖 Senpai Rename Bot | [@Senpai_RenameBot](https://t.me/Senpai_RenameBot) |
 | ⚡ Baka File Rename | [@BakaFileRename_bot](https://t.me/BakaFileRename_bot) |
 
 </div>
@@ -117,8 +116,7 @@ nano .env   # Fill your credentials
 pip3 install -r requirements.txt --break-system-packages
 
 # Step 5 — Run in background
-screen -S senpai-bot
-export $(cat .env | xargs) && python3 bot.py
+python3 bot.py
 # Press CTRL+A then D to detach
 ```
 
@@ -224,8 +222,6 @@ restart        — Restart bot + notify users
 <div align="center">
 
 **Built with 🖤 by [SenpaiLabs](https://github.com/SenpaiLabs)**
-
-*No Updates. Just Upgrades.* 𓆩𓆪
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
