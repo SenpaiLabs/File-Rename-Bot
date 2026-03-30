@@ -112,7 +112,7 @@ class Strings:
 ℹ️ ꜱᴜᴘᴘᴏʀᴛ : <a href="https://t.me/THE_DRAGON_SUPPORT">ꜱᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ</a>"""
 
     # ── Premium Plans ────────────────────────────────
-    UPGRADE_PREMIUM = """<b> 💳 ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ</b>
+    UPGRADE_PREMIUM = """<b>💎 ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ</b>
 
 <code>ᴘʟᴀɴ       ᴅᴜʀᴀᴛɪᴏɴ    ᴘʀɪᴄᴇ</code>
 🥉 ʙʀᴏɴᴢᴇ  — 3 ᴅᴀʏꜱ  —  ₹39
@@ -214,6 +214,7 @@ class Strings:
 
     # ── Progress Bar ─────────────────────────────────
     SENPAI_PROGRESS = """<b>
+
 ╭━━━━━━━━◉🚀◉━━━━━━━━╮
 ┃   ꜱᴇɴᴘᴀɪ ᴘʀᴏᴄᴇꜱꜱɪɴɢ...
 ┣━━━━━━━━━━━━━━━━━━━━╯
@@ -222,3 +223,7 @@ class Strings:
 ┣⪼ 🚀 ꜱᴘᴇᴇᴅ : {3}/s
 ┣⪼ ⏰ ᴇᴛᴀ   : {4}
 ╰━━━━━━━━◉🔥◉━━━━━━━━╯</b>"""
+-e 
+
+# backward-compatible alias — baaki code `senpai` import karta hai
+senpai = Strings
