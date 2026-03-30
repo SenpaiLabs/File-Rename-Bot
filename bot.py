@@ -28,7 +28,10 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 """
 
 # extra imports
-import aiohttp, asyncio, warnings, pytz, datetime
+import warnings
+warnings.filterwarnings("ignore")
+
+import aiohttp, asyncio, pytz, datetime
 import logging
 import logging.config
 import glob, sys
@@ -55,6 +58,8 @@ logging.getLogger("pyrogram").setLevel(logging.WARNING)
 logging.getLogger("pyrofork").setLevel(logging.CRITICAL)
 logging.getLogger("motor").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
+logging.getLogger("hachoir").setLevel(logging.CRITICAL)
+logging.getLogger("pymediainfo").setLevel(logging.CRITICAL)
 
 class SenpaiRenameBot(Client):
     def __init__(self):
@@ -137,10 +142,8 @@ def main():
         else:
             await asyncio.gather(senpai_instance.start())
         
-        # Idle mode start karo
         await idle()
         
-        # Bot stop karo
         if Config.STRING_SESSION:
             await asyncio.gather(app.stop(), senpai_instance.stop())
         else:
@@ -155,7 +158,7 @@ def main():
         loop.close()
 
 if __name__ == "__main__":
-    warnings.filterwarnings("ignore", message="There is no current event loop")
+    warnings.filterwarnings("ignore")
     try:
         main()
     except errors.FloodWait as ft:
