@@ -1,11 +1,10 @@
 # (c) @SenpaiLabs
-# SenpaiLabs Developer 
-# Don't Remove Credit 😔
-# Telegram Channel @Senpai_Updates & @THE_DRAGON_SUPPORT
-# Developer @SenpaiLabs
+# Telegram : https://t.me/THE_DRAGON_SUPPORT
+# Source   : https://github.com/SenpaiLabs/File-Rename-Bot
+# License  : Apache 2.0
+
 """
-Apache License 2.0
-Copyright (c) 2022 @SenpaiLabs
+Apache License 2.0 — Copyright (c) 2022 @SenpaiLabs
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -13,228 +12,213 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
+
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Telegram Link : https://t.me/THE_DRAGON_SUPPORT
-Repo Link : https://github.com/SenpaiLabs/File-Rename-Bot
-License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 """
 
-# Load environment variables from .env file
 from dotenv import load_dotenv
 load_dotenv()
 
 import re, os, time
-id_pattern = re.compile(r'^.\d+$') 
 
-class Config(object):
-    # senpailabs client config
-    API_ID = os.environ.get("API_ID", "")
-    API_HASH = os.environ.get("API_HASH", "")
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "") 
-    BOT = None
+id_pattern = re.compile(r'^.\d+$')
 
-    # premium account string session required 😢 
-    STRING_SESSION = os.environ.get("STRING_SESSION", "")
-    
-    # database config
-    DB_NAME = os.environ.get("DB_NAME","Senpai_Rename_Bot")     
-    DB_URL = os.environ.get("DB_URL","")
- 
-    # other configs
-    SENPAI_PIC = os.environ.get("SENPAI_PIC", "https://files.catbox.moe/xu5jd8.jpg")
-    ADMIN = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '6705898491').split()]
-    LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1002123429361"))
 
-    # free upload limit 
-    FREE_UPLOAD_LIMIT = 6442450944 # calculation 6*1024*1024*1024=results
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#                     BOT CONFIG
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    # premium mode feature ✅
-    UPLOAD_LIMIT_MODE = True 
-    PREMIUM_MODE = False 
-    
-    #force subs
+class Config:
+
+    # ── Pyrogram Client ──────────────────────────────
+    API_ID          = os.environ.get("API_ID", "")
+    API_HASH        = os.environ.get("API_HASH", "")
+    BOT_TOKEN       = os.environ.get("BOT_TOKEN", "")
+    BOT             = None
+
+    # ── User Session (Premium features) ─────────────
+    STRING_SESSION  = os.environ.get("STRING_SESSION", "")
+
+    # ── Database ─────────────────────────────────────
+    DB_URL          = os.environ.get("DB_URL", "")
+    DB_NAME         = os.environ.get("DB_NAME", "Senpai_Rename_Bot")
+
+    # ── Bot Appearance ───────────────────────────────
+    SENPAI_PIC      = os.environ.get("SENPAI_PIC", "https://files.catbox.moe/xu5jd8.jpg")
+    ADMIN           = [
+        int(a) if id_pattern.search(a) else a
+        for a in os.environ.get("ADMIN", "6705898491").split()
+    ]
+    LOG_CHANNEL     = int(os.environ.get("LOG_CHANNEL", "-1002123429361"))
+
+    # ── Upload Limits ────────────────────────────────
+    FREE_UPLOAD_LIMIT   = 6 * 1024 * 1024 * 1024   # 6 GB
+    UPLOAD_LIMIT_MODE   = True
+    PREMIUM_MODE        = False
+
+    # ── Force Subscribe ──────────────────────────────
     try:
-        FORCE_SUB = int(os.environ.get("FORCE_SUB", "")) 
-    except:
+        FORCE_SUB = int(os.environ.get("FORCE_SUB", ""))
+    except (ValueError, TypeError):
         FORCE_SUB = os.environ.get("FORCE_SUB", "SenpaiLabs")
-        
-    # wes response configuration     
-    PORT = int(os.environ.get("PORT", "8080"))
-    BOT_UPTIME = time.time()
 
-class senpai(object):
-    # part of text configuration
-    START_TXT = """<b>Ｈ𝙰𝙸, {}👋
+    # ── Web Server ───────────────────────────────────
+    PORT        = int(os.environ.get("PORT", "8080"))
+    BOT_UPTIME  = time.time()
 
-𝚃ʜɪs 𝙸s 𝙰ɴ 𝙰ᴅᴠᴀᴄᴇᴅ 𝙰ɴᴅ 𝚈ᴇᴛ 𝙿ᴏᴡᴇʀғᴜʟ 𝚁ᴇɴᴀᴍᴇ 𝙱ᴏᴛ
-𝚄sɪɴɢ 𝚃ʜɪs 𝙱ᴏᴛ 𝚈ᴏᴜ 𝙲ᴀɴ 𝚁ᴇɴᴀᴍᴇ & 𝙲ʜᴀɴɢᴇ 𝚃ʜᴜᴍʙɴᴀɪʟ 𝙾ғ 𝚈ᴏᴜʀ 𝙵ɪʟᴇ 
-𝚈ᴏᴜ 𝙲ᴀɴ 𝙰ʟsᴏ 𝙲ᴏɴᴠᴇʀᴛ 𝚅ɪᴅᴇᴏ 𝚃ᴏ 𝙵ɪʟᴇ & 𝙵ɪʟᴇ 𝚃ᴏ 𝚅ɪᴅᴇᴏ
-𝚃𝙷𝙸𝚂 𝙱𝙾𝚃 𝙰𝙻𝚂𝙾 𝚂𝚄𝙿𝙿𝙾𝚁𝚃𝚂 𝙲𝚄𝚂𝚃𝙾𝙼 𝚃𝙷𝚄𝙼𝙱𝙽𝙰𝙸𝙻 𝙰𝙽𝙳 𝙲𝚄𝚂𝚃𝙾𝙼 𝙲𝙰𝙿𝚃𝙸𝙾𝙽
 
-Tʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ : @SenpaiLabs 💞</b>"""
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#                    BOT STRINGS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+class Strings:
+
+    # ── /start ───────────────────────────────────────
+    START_TXT = """<b>ʜᴀɪ, {} 👋
+
+ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴀɴ ᴀᴅᴠᴀɴᴄᴇᴅ & ᴘᴏᴡᴇʀꜰᴜʟ ʀᴇɴᴀᴍᴇ ʙᴏᴛ.
+
+• ʀᴇɴᴀᴍᴇ & ᴄʜᴀɴɢᴇ ᴛʜᴜᴍʙɴᴀɪʟ ᴏꜰ ᴀɴʏ ꜰɪʟᴇ
+• ᴄᴏɴᴠᴇʀᴛ ᴠɪᴅᴇᴏ ↔ ᴅᴏᴄᴜᴍᴇɴᴛ
+• ᴄᴜꜱᴛᴏᴍ ᴛʜᴜᴍʙɴᴀɪʟ & ᴄᴜꜱᴛᴏᴍ ᴄᴀᴘᴛɪᴏɴ ꜱᴜᴘᴘᴏʀᴛ
+
+ᴄʀᴇᴀᴛᴇᴅ ʙʏ : @SenpaiLabs 💞</b>"""
+
+    # ── /about ───────────────────────────────────────
     ABOUT_TXT = """<b>╭───────────⍟
-├🤖 ᴍy ɴᴀᴍᴇ : {}
-├🖥️ Dᴇᴠᴇʟᴏᴩᴇʀꜱ : {}
-├👨‍💻 Pʀᴏɢʀᴀᴍᴇʀ : {}
-├📕 Lɪʙʀᴀʀy : {}
-├✏️ Lᴀɴɢᴜᴀɢᴇ: {}
-├💾 Dᴀᴛᴀ Bᴀꜱᴇ: {}
-├📊 ᴠᴇʀsɪᴏɴ: <a href=https://github.com/SenpaiLabs/File-Rename-Bot>{}</a></b>     
-╰───────────────⍟ """
+├ 🤖 ɴᴀᴍᴇ       : {}
+├ 🖥️  ᴅᴇᴠᴇʟᴏᴘᴇʀ  : {}
+├ 👨‍💻 ᴘʀᴏɢʀᴀᴍᴍᴇʀ : {}
+├ 📕 ʟɪʙʀᴀʀʏ    : {}
+├ ✏️  ʟᴀɴɢᴜᴀɢᴇ  : {}
+├ 💾 ᴅᴀᴛᴀʙᴀꜱᴇ   : {}
+├ 📊 ᴠᴇʀꜱɪᴏɴ    : <a href="https://github.com/SenpaiLabs/File-Rename-Bot">{}</a>
+╰───────────────⍟</b>"""
 
-    HELP_TXT = """
-<b>•></b> /start Tʜᴇ Bᴏᴛ.
+    # ── /help ────────────────────────────────────────
+    HELP_TXT = """<b>📖 ʜᴇʟᴘ ᴍᴇɴᴜ</b>
 
-✏️ <b><u>Hᴏᴡ Tᴏ Rᴇɴᴀᴍᴇ A Fɪʟᴇ</u></b>
-<b>•></b> Sᴇɴᴅ Aɴy Fɪʟᴇ Aɴᴅ Tyᴩᴇ Nᴇᴡ Fɪʟᴇ Nɴᴀᴍᴇ \nAɴᴅ Aᴇʟᴇᴄᴛ Tʜᴇ Fᴏʀᴍᴀᴛ [ document, video, audio ].           
-ℹ️ 𝗔𝗻𝘆 𝗢𝘁𝗵𝗲𝗿 𝗛𝗲𝗹𝗽 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 :- <a href=https://t.me/THE_DRAGON_SUPPORT>𝑺𝑼𝑷𝑷𝑶𝑹𝑻 𝑮𝑹𝑶𝑼𝑷</a>
-"""
+• /start — ꜱᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ
 
-    UPGRADE_PREMIUM= """
-•⪼ ★𝘗𝘭𝘢𝘯𝘴    -  ⏳𝘋𝘢𝘵𝘦 - 💸𝘗𝘳𝘪𝘤𝘦 
-•⪼ 🥉𝘉𝘳𝘰𝘯𝘻𝘦  -   3𝘥𝘢𝘺𝘴 -   39
-•⪼ 🥈𝘚𝘪𝘭𝘷𝘦𝘳   -   7𝘥𝘢𝘺𝘴 -   59
-•⪼ 🥇𝘎𝘰𝘭𝘥    -  15𝘥𝘢𝘺𝘴 -  99
-•⪼ 🏆𝘗𝘭𝘢𝘵𝘪𝘯𝘶𝘮 -  1𝘮𝘰𝘯𝘵𝘩 -  179
-•⪼ 💎𝘋𝘪𝘢𝘮𝘰𝘯𝘥 -  2𝘮𝘰𝘯𝘵𝘩 -  339
+<b><u>✏️ ʜᴏᴡ ᴛᴏ ʀᴇɴᴀᴍᴇ ᴀ ꜰɪʟᴇ</u></b>
+ꜱᴇɴᴅ ᴀɴʏ ꜰɪʟᴇ → ᴛʏᴘᴇ ɴᴇᴡ ɴᴀᴍᴇ → ꜱᴇʟᴇᴄᴛ ꜰᴏʀᴍᴀᴛ
+<code>[ document · video · audio ]</code>
 
-- 𝘋𝘢𝘪𝘭𝘺 𝘜𝘱𝘭𝘰𝘢𝘥 𝘓𝘪𝘮𝘪𝘵 𝘜𝘯𝘭𝘪𝘮𝘪𝘵𝘦𝘥
-- 𝘋𝘪𝘴𝘤𝘰𝘶𝘯𝘵 𝘈𝘭𝘭 𝘗𝘭𝘢𝘯 𝘙𝘴.9
-    """
-    
-    UPGRADE_PLAN= """
-𝘗𝘭𝘢𝘯: 𝘗𝘳𝘰
-𝘋𝘢𝘵𝘦: 1 𝘮𝘰𝘯𝘵𝘩 
-𝘗𝘳𝘪𝘤𝘦: 179
-𝘓𝘪𝘮𝘪𝘵: 100 𝘎𝘉
+ℹ️ ꜱᴜᴘᴘᴏʀᴛ : <a href="https://t.me/THE_DRAGON_SUPPORT">ꜱᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ</a>"""
 
-𝘗𝘭𝘢𝘯: 𝘜𝘭𝘵𝘢 𝘗𝘳𝘰 
-𝘋𝘢𝘵𝘦: 1 𝘮𝘰𝘯𝘵𝘩 
-𝘗𝘳𝘪𝘤𝘦: 199
-𝘓𝘪𝘮𝘪𝘵: 1000 𝘎𝘉
+    # ── Premium Plans ────────────────────────────────
+    UPGRADE_PREMIUM = """<b> 💳 ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ</b>
 
-- 𝘋𝘪𝘴𝘤𝘰𝘶𝘯𝘵 𝘈𝘭𝘭 𝘗𝘭𝘢𝘯 𝘙𝘴.9
-    """
-    
-    THUMBNAIL = """
-🌌 <b><u>Hᴏᴡ Tᴏ Sᴇᴛ Tʜᴜᴍʙɴɪʟᴇ</u></b>
+<code>ᴘʟᴀɴ       ᴅᴜʀᴀᴛɪᴏɴ    ᴘʀɪᴄᴇ</code>
+🥉 ʙʀᴏɴᴢᴇ  — 3 ᴅᴀʏꜱ  —  ₹39
+🥈 ꜱɪʟᴠᴇʀ  — 7 ᴅᴀʏꜱ  —  ₹59
+🥇 ɢᴏʟᴅ    — 15 ᴅᴀʏꜱ —  ₹99
+🏆 ᴘʟᴀᴛɪɴᴜᴍ — 1 ᴍᴏɴᴛʜ — ₹179
+💎 ᴅɪᴀᴍᴏɴᴅ — 2 ᴍᴏɴᴛʜ — ₹339
 
-<b>•></b> Sᴇɴᴅ Aɴy Pʜᴏᴛᴏ Tᴏ Aᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟy Sᴇᴛ Tʜᴜᴍʙɴɪʟᴇ.
-<b>•></b> /del_thumb Uꜱᴇ Tʜɪꜱ Cᴏᴍᴍᴀɴᴅ Tᴏ Dᴇʟᴇᴛᴇ Yᴏᴜʀ Oʟᴅ Tʜᴜᴍʙɴɪʟᴇ.
-<b>•></b> /view_thumb Uꜱᴇ Tʜɪꜱ Cᴏᴍᴍᴀɴᴅ Tᴏ Vɪᴇᴡ Yᴏᴜʀ Cᴜʀʀᴇɴᴛ Tʜᴜᴍʙɴɪʟᴇ.
-"""
-    CAPTION= """
-📑 <b><u>Hᴏᴡ Tᴏ Sᴇᴛ Cᴜꜱᴛᴏᴍ Cᴀᴩᴛɪᴏɴ</u></b>
+✅ ᴜɴʟɪᴍɪᴛᴇᴅ ᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ
+🏷️ ₹9 ᴅɪꜱᴄᴏᴜɴᴛ ᴏɴ ᴀʟʟ ᴘʟᴀɴꜱ"""
 
-<b>•></b> /set_caption - Uꜱᴇ Tʜɪꜱ Cᴏᴍᴍᴀɴᴅ Tᴏ Sᴇᴛ ᴀ Cᴜꜱᴛᴏᴍ Cᴀᴩᴛɪᴏɴ
-<b>•></b> /see_caption - Uꜱᴇ Tʜɪꜱ Cᴏᴍᴍᴀɴᴅ Tᴏ Vɪᴇᴡ Yᴏᴜʀ Cᴜꜱᴛᴏᴍ Cᴀᴩᴛɪᴏɴ
-<b>•></b> /del_caption - Uꜱᴇ Tʜɪꜱ Cᴏᴍᴍᴀɴᴅ Tᴏ Dᴇʟᴇᴛᴇ Yᴏᴜʀ Cᴜꜱᴛᴏᴍ Cᴀᴩᴛɪᴏɴ
+    UPGRADE_PLAN = """<b>⭐ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ</b>
 
-Exᴀᴍᴩʟᴇ:- `/set_caption 📕 Fɪʟᴇ Nᴀᴍᴇ: {filename}
-💾 Sɪᴢᴇ: {filesize}
-⏰ Dᴜʀᴀᴛɪᴏɴ: {duration}`
-"""
-    BOT_STATUS = """
-⚡️ ʙᴏᴛ sᴛᴀᴛᴜs ⚡️
+🔹 <b>ᴘʀᴏ</b>       — 1 ᴍᴏɴᴛʜ — ₹179 — 100 GB
+🔸 <b>ᴜʟᴛʀᴀ ᴘʀᴏ</b> — 1 ᴍᴏɴᴛʜ — ₹199 — 1000 GB
 
-⌚️ ʙᴏᴛ ᴜᴩᴛɪᴍᴇ: `{}`
-👭 ᴛᴏᴛᴀʟ ᴜsᴇʀꜱ: `{}`
-💸 ᴛᴏᴛᴀʟ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀs: `{}`
-֍ ᴜᴘʟᴏᴀᴅ: `{}`
-⊙ ᴅᴏᴡɴʟᴏᴀᴅ: `{}`
-"""
-    LIVE_STATUS = """
-⚡ ʟɪᴠᴇ sᴇʀᴠᴇʀ sᴛᴀᴛᴜs ⚡
+🏷️ ₹9 ᴅɪꜱᴄᴏᴜɴᴛ ᴏɴ ᴀʟʟ ᴘʟᴀɴꜱ"""
 
-ᴜᴘᴛɪᴍᴇ: `{}`
-ᴄᴘᴜ: `{}%`
-ʀᴀᴍ: `{}%` 
-ᴛᴏᴛᴀʟ ᴅɪsᴋ: `{}`
-ᴜsᴇᴅ sᴘᴀᴄᴇ: `{} {}%`
-ғʀᴇᴇ sᴘᴀᴄᴇ: `{}`
-ᴜᴘʟᴏᴀᴅ: `{}`
-ᴅᴏᴡɴʟᴏᴀᴅ: `{}`
-V𝟹.𝟶.𝟶 [STABLE]
-"""
-    DIGITAL_METADATA = """
-❪ SET CUSTOM METADATA ❫
+    # ── Thumbnail ────────────────────────────────────
+    THUMBNAIL = """<b>🌌 <u>ᴛʜᴜᴍʙɴᴀɪʟ ꜱᴇᴛᴛɪɴɢꜱ</u></b>
 
-- /metadata - Tᴏ Sᴇᴛ & Cʜᴀɴɢᴇ ʏᴏᴜʀ ᴍᴇᴛᴀᴅᴀᴛᴀ ᴄᴏᴅᴇ
+• ꜱᴇɴᴅ ᴀɴʏ ᴘʜᴏᴛᴏ ᴛᴏ ꜱᴇᴛ ɪᴛ ᴀꜱ ᴛʜᴜᴍʙɴᴀɪʟ
+• /del_thumb  — ᴅᴇʟᴇᴛᴇ ᴄᴜʀʀᴇɴᴛ ᴛʜᴜᴍʙɴᴀɪʟ
+• /view_thumb — ᴠɪᴇᴡ ᴄᴜʀʀᴇɴᴛ ᴛʜᴜᴍʙɴᴀɪʟ"""
 
-☞ Fᴏʀ Exᴀᴍᴘʟᴇ:-
+    # ── Custom Caption ───────────────────────────────
+    CAPTION = """<b>📑 <u>ᴄᴜꜱᴛᴏᴍ ᴄᴀᴘᴛɪᴏɴ</u></b>
 
-`--change-title @Senpai_Updates
+• /set_caption — ꜱᴇᴛ ᴀ ᴄᴜꜱᴛᴏᴍ ᴄᴀᴘᴛɪᴏɴ
+• /see_caption — ᴠɪᴇᴡ ʏᴏᴜʀ ᴄᴀᴘᴛɪᴏɴ
+• /del_caption — ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴄᴀᴘᴛɪᴏɴ
+
+<b>ᴇxᴀᴍᴘʟᴇ:</b>
+<code>/set_caption 📕 ꜰɪʟᴇ: {filename}
+💾 ꜱɪᴢᴇ: {filesize}
+⏰ ᴅᴜʀᴀᴛɪᴏɴ: {duration}</code>"""
+
+    # ── Bot Status ───────────────────────────────────
+    BOT_STATUS = """<b>⚡ ʙᴏᴛ ꜱᴛᴀᴛᴜꜱ ⚡</b>
+
+⌚ ᴜᴘᴛɪᴍᴇ        : <code>{}</code>
+👥 ᴛᴏᴛᴀʟ ᴜꜱᴇʀꜱ  : <code>{}</code>
+💸 ᴘʀᴇᴍɪᴜᴍ       : <code>{}</code>
+⬆️ ᴜᴘʟᴏᴀᴅ        : <code>{}</code>
+⬇️ ᴅᴏᴡɴʟᴏᴀᴅ      : <code>{}</code>"""
+
+    # ── Live Server Status ───────────────────────────
+    LIVE_STATUS = """<b>⚡ ʟɪᴠᴇ ꜱᴇʀᴠᴇʀ ꜱᴛᴀᴛᴜꜱ ⚡</b>
+
+⌚ ᴜᴘᴛɪᴍᴇ     : <code>{}</code>
+🖥️  ᴄᴘᴜ        : <code>{}%</code>
+🧠 ʀᴀᴍ        : <code>{}%</code>
+💽 ᴛᴏᴛᴀʟ ᴅɪꜱᴋ : <code>{}</code>
+📦 ᴜꜱᴇᴅ       : <code>{} — {}%</code>
+📂 ꜰʀᴇᴇ       : <code>{}</code>
+⬆️ ᴜᴘʟᴏᴀᴅ     : <code>{}</code>
+⬇️ ᴅᴏᴡɴʟᴏᴀᴅ   : <code>{}</code>
+
+<code>V3.0.0 [STABLE]</code>"""
+
+    # ── Metadata ─────────────────────────────────────
+    DIGITAL_METADATA = """<b>❪ ꜱᴇᴛ ᴄᴜꜱᴛᴏᴍ ᴍᴇᴛᴀᴅᴀᴛᴀ ❫</b>
+
+• /metadata — ꜱᴇᴛ / ᴄʜᴀɴɢᴇ ʏᴏᴜʀ ᴍᴇᴛᴀᴅᴀᴛᴀ
+
+<b>ᴇxᴀᴍᴘʟᴇ:</b>
+<code>--change-title @Senpai_Updates
 --change-video-title @Senpai_Updates
 --change-audio-title @Senpai_Updates
 --change-subtitle-title @Senpai_Updates
---change-author @Senpai_Updates`
+--change-author @Senpai_Updates</code>
 
-📥 Fᴏʀ Hᴇʟᴘ Cᴏɴᴛ. @SenpaiLabs
-"""
-    
-    CUSTOM_FILE_NAME = """
-<u>🖋️ Custom File Name</u>
+📥 ʜᴇʟᴘ: @SenpaiLabs"""
 
-you can pre-add a prefix and suffix along with your new filename
+    SEND_METADATA = DIGITAL_METADATA  # alias
 
-➢ /set_prefix - To add a prefix along with your _filename.
-➢ /see_prefix - Tᴏ Sᴇᴇ Yᴏᴜʀ Pʀᴇғɪx !!
-➢ /del_prefix - Tᴏ Dᴇʟᴇᴛᴇ Yᴏᴜʀ Pʀᴇғɪx !!
-➢ /set_suffix - To add a suffix along with your filename_.
-➢ /see_suffix - Tᴏ Sᴇᴇ Yᴏᴜʀ Sᴜғғɪx !!
-➢ /del_suffix - Tᴏ Dᴇʟᴇᴛᴇ Yᴏᴜʀ Sᴜғғɪx !!
+    # ── Custom File Name ─────────────────────────────
+    CUSTOM_FILE_NAME = """<b><u>🖋️ ᴄᴜꜱᴛᴏᴍ ꜰɪʟᴇ ɴᴀᴍᴇ</u></b>
 
-Exᴀᴍᴩʟᴇ:- `/set_suffix @SenpaiLabs`
-Exᴀᴍᴩʟᴇ:- `/set_prefix @SenpaiLabs`
-"""
-    
-    #⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-#⚠️ Dᴏɴ'ᴛ Rᴇᴍᴏᴠᴇ Oᴜʀ Cʀᴇᴅɪᴛꜱ @SenpaiLabs🙏🥲
-    # ᴡʜᴏᴇᴠᴇʀ ɪs ᴅᴇᴘʟᴏʏɪɴɢ ᴛʜɪs ʀᴇᴘᴏ ɪs ᴡᴀʀɴᴇᴅ ⚠️ ᴅᴏ ɴᴏᴛ ʀᴇᴍᴏᴠᴇ ᴄʀᴇᴅɪᴛs ɢɪᴠᴇɴ ɪɴ ᴛʜɪs ʀᴇᴘᴏ #ғɪʀsᴛ ᴀɴᴅ ʟᴀsᴛ ᴡᴀʀɴɪɴɢ ⚠️
-    DEV_TXT = """<b><u>Sᴩᴇᴄɪᴀʟ Tʜᴀɴᴋꜱ & Dᴇᴠᴇʟᴏᴩᴇʀꜱ</b></u>
-    
-» 𝗦𝗢𝗨𝗥𝗖𝗘 𝗖𝗢𝗗𝗘 : <a href=https://github.com/SenpaiLabs/File-Rename-Bot>File-Rename-Bot</a>
+ᴀᴅᴅ ᴀ ᴘʀᴇꜰɪx ᴏʀ ꜱᴜꜰꜰɪx ᴛᴏ ʏᴏᴜʀ ꜰɪʟᴇɴᴀᴍᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ.
 
-• ❣️ <a href=https://github.com/SenpaiLabs>SenpaiLabs</a>
-• ❣️ <a href=https://t.me/THE_DRAGON_SUPPORT>𝘿𝙍𝘼𝙂𝙊𝙉 𝘾𝙊𝙈𝙈𝙐𝙉𝙄𝙏𝙔 🐉</a>
-• ❣️ <a href=https://t.me/Senpai_Updates>Sᴇɴᴘᴀɪ Bᴏᴛ Uᴘᴅᴀᴛᴇ</a> """
-    # ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+• /set_prefix — ᴀᴅᴅ ᴘʀᴇꜰɪx ᴛᴏ ꜰɪʟᴇɴᴀᴍᴇ
+• /see_prefix — ᴠɪᴇᴡ ᴄᴜʀʀᴇɴᴛ ᴘʀᴇꜰɪx
+• /del_prefix — ᴅᴇʟᴇᴛᴇ ᴘʀᴇꜰɪx
+• /set_suffix — ᴀᴅᴅ ꜱᴜꜰꜰɪx ᴛᴏ ꜰɪʟᴇɴᴀᴍᴇ
+• /see_suffix — ᴠɪᴇᴡ ᴄᴜʀʀᴇɴᴛ ꜱᴜꜰꜰɪx
+• /del_suffix — ᴅᴇʟᴇᴛᴇ ꜱᴜꜰꜰɪx
 
-    SEND_METADATA = """
-❪ SET CUSTOM METADATA ❫
+<b>ᴇxᴀᴍᴘʟᴇ:</b> <code>/set_suffix @SenpaiLabs</code>"""
 
-☞ Fᴏʀ Exᴀᴍᴘʟᴇ:-
+    # ── Dev Credits ──────────────────────────────────
+    DEV_TXT = """<b><u>ꜱᴘᴇᴄɪᴀʟ ᴛʜᴀɴᴋꜱ & ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ</u></b>
 
-`--change-title @Senpai_Updates
---change-video-title @Senpai_Updates
---change-audio-title @Senpai_Updates
---change-subtitle-title @Senpai_Updates
---change-author @Senpai_Updates`
+» ꜱᴏᴜʀᴄᴇ : <a href="https://github.com/SenpaiLabs/File-Rename-Bot">File-Rename-Bot</a>
 
-📥 Fᴏʀ Hᴇʟᴘ Cᴏɴᴛ. @SenpaiLabs
-"""
-    
+• ❣️ <a href="https://github.com/SenpaiLabs">SenpaiLabs</a>
+• ❣️ <a href="https://t.me/THE_DRAGON_SUPPORT">ᴅʀᴀɢᴏɴ ᴄᴏᴍᴍᴜɴɪᴛʏ 🐉</a>
+• ❣️ <a href="https://t.me/Senpai_Updates">ꜱᴇɴᴘᴀɪ ᴜᴘᴅᴀᴛᴇꜱ</a>"""
+
+    # ── Progress Bar ─────────────────────────────────
     SENPAI_PROGRESS = """<b>
 ╭━━━━━━━━◉🚀◉━━━━━━━━╮
-┃   𝗦𝗘𝗡𝗣𝗔𝗜 𝗣𝗥𝗢𝗖𝗘𝗦𝗦𝗜𝗡𝗚...❱━➣  
+┃   ꜱᴇɴᴘᴀɪ ᴘʀᴏᴄᴇꜱꜱɪɴɢ...
 ┣━━━━━━━━━━━━━━━━━━━━╯
-┣⪼ 📦 𝗦𝗜𝗭𝗘: {1} | {2}
-┣⪼ 📊 𝗗𝗢𝗡𝗘: {0}%
-┣⪼ 🚀 𝗦𝗣𝗘𝗘𝗗: {3}/s
-┣⪼ ⏰ 𝗘𝗧𝗔: {4}
+┣⪼ 📦 ꜱɪᴢᴇ  : {1} | {2}
+┣⪼ 📊 ᴅᴏɴᴇ  : {0}%
+┣⪼ 🚀 ꜱᴘᴇᴇᴅ : {3}/s
+┣⪼ ⏰ ᴇᴛᴀ   : {4}
 ╰━━━━━━━━◉🔥◉━━━━━━━━╯</b>"""
-
-# SenpaiLabs Developer 
-# Don't Remove Credit 😔
-# Telegram Channel @Senpai_Updates & @THE_DRAGON_SUPPORT
-# Developer @SenpaiLabs
-# Update Channel @THE_DRAGON_SUPPORT & @Senpai_Updates
