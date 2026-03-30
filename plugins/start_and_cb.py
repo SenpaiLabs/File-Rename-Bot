@@ -43,13 +43,13 @@ from plugins import __version__ as _bot_version_, __developer__, __database__, _
 from plugins.file_rename import upload_doc
 
 upgrade_button = InlineKeyboardMarkup([[
-        InlineKeyboardButton('💳 Buy Premium', url='https://t.me/THE_DRAGON_SUPPORT'),
+        InlineKeyboardButton('💳 Buy Premium', url='https://t.me/ll_Yoichi_Isagi_ll'),
          ],[
         InlineKeyboardButton("Bᴀᴄᴋ", callback_data = "start")
 ]])
 
 upgrade_trial_button = InlineKeyboardMarkup([[
-        InlineKeyboardButton('💳 Buy Premium', url='https://t.me/THE_DRAGON_SUPPORT'),
+        InlineKeyboardButton('💳 Buy Premium', url='https://t.me/ll_Yoichi_Isagi_ll'),
          ],[
         InlineKeyboardButton("ᴛʀɪᴀʟ - 𝟷𝟸 ʜᴏᴜʀs ✓", callback_data = "give_trial"),
         InlineKeyboardButton("Bᴀᴄᴋ", callback_data = "start")

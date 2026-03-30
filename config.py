@@ -27,6 +27,10 @@ Repo Link : https://github.com/SenpaiLabs/File-Rename-Bot
 License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 """
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 import re, os, time
 id_pattern = re.compile(r'^.\d+$') 
 
@@ -54,7 +58,7 @@ class Config(object):
 
     # premium mode feature ✅
     UPLOAD_LIMIT_MODE = True 
-    PREMIUM_MODE = True 
+    PREMIUM_MODE = False 
     
     #force subs
     try:
@@ -201,8 +205,8 @@ Exᴀᴍᴩʟᴇ:- `/set_prefix @SenpaiLabs`
 » 𝗦𝗢𝗨𝗥𝗖𝗘 𝗖𝗢𝗗𝗘 : <a href=https://github.com/SenpaiLabs/File-Rename-Bot>File-Rename-Bot</a>
 
 • ❣️ <a href=https://github.com/SenpaiLabs>SenpaiLabs</a>
-• ❣️ <a href=https://t.me/THE_DRAGON_SUPPORT>THE_DRAGON_SUPPORT</a>
-• ❣️ <a href=https://t.me/Senpai_Updates>Senpai_Updates</a> """
+• ❣️ <a href=https://t.me/THE_DRAGON_SUPPORT>𝘿𝙍𝘼𝙂𝙊𝙉 𝘾𝙊𝙈𝙈𝙐𝙉𝙄𝙏𝙔 🐉</a>
+• ❣️ <a href=https://t.me/Senpai_Updates>Sᴇɴᴘᴀɪ Bᴏᴛ Uᴘᴅᴀᴛᴇ</a> """
     # ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
     SEND_METADATA = """

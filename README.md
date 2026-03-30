@@ -113,7 +113,7 @@ cp .env.example .env
 nano .env   # Fill your credentials
 
 # Step 4 — Install Python packages
-pip3 install -r requirements.txt --break-system-packages
+pip3 install -r requirements.txt
 
 # Step 5 — Run in background
 python3 bot.py
