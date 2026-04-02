@@ -34,8 +34,11 @@ from pyrogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineK
 from pyrogram.errors import ListenerTimeout
 
 # extra imports
+import logging
 from helper.database import senpailabs
 from config import Config, senpai
+
+logger = logging.getLogger(__name__)
 
 TRUE = [[InlineKeyboardButton('ᴍᴇᴛᴀᴅᴀᴛᴀ ᴏɴ', callback_data='metadata_1'),
        InlineKeyboardButton('✅', callback_data='metadata_1')
@@ -63,23 +66,42 @@ async def handle_metadata(bot: Client, message: Message):
 async def query_metadata(bot: Client, query: CallbackQuery):
     data = query.data
     if data.startswith('metadata_'):
-        _bool = data.split('_')[1]
+        # ✅ SECURITY FIX: Replaced dangerous eval() with safe int() conversion
+        try:
+            _bool_str = data.split('_')[1]
+            bool_meta = bool(int(_bool_str))  # ✅ Safe: only converts "0" or "1"
+        except (ValueError, IndexError):
+            logger.warning(f"Invalid metadata callback data: {data}")
+            return
+            
         user_metadata = await senpailabs.get_metadata_code(query.from_user.id)
-        bool_meta = bool(eval(_bool))
         await senpailabs.set_metadata_mode(query.from_user.id, bool_meta=not bool_meta)
-        await query.message.edit(f"Your Current Metadata:-\n\n➜ `{user_metadata}`", reply_markup=InlineKeyboardMarkup(FALSE if bool_meta else TRUE))
+        await query.message.edit(
+            f"Your Current Metadata:-\n\n➜ `{user_metadata}`",
+            reply_markup=InlineKeyboardMarkup(FALSE if bool_meta else TRUE)
+        )
            
     elif data == 'cutom_metadata':
         await query.message.delete()
         try:
-            metadata = await bot.ask(text=senpai.SEND_METADATA, chat_id=query.from_user.id, filters=filters.text, timeout=30, disable_web_page_preview=True)
+            metadata = await bot.ask(
+                text=senpai.SEND_METADATA, 
+                chat_id=query.from_user.id, 
+                filters=filters.text, 
+                timeout=30, 
+                disable_web_page_preview=True
+            )
             senpai_msg = await query.message.reply_text("**Please Wait...**", reply_to_message_id=metadata.id)
             await senpailabs.set_metadata_code(query.from_user.id, metadata_code=metadata.text)
             await senpai_msg.edit("**Your Metadata Code Set Successfully ✅**")
         except ListenerTimeout:
-            await query.message.reply_text("⚠️ Error!!\n\n**Request timed out.**\nRestart by using /metadata", reply_to_message_id=query.message.id)
+            await query.message.reply_text(
+                "⚠️ Error!!\n\n**Request timed out.**\nRestart by using /metadata",
+                reply_to_message_id=query.message.id
+            )
         except Exception as e:
-            print(e)
+            logger.error(f"Metadata set error: {e}")
+
 
 # SenpaiLabs Developer 
 # Don't Remove Credit 😔

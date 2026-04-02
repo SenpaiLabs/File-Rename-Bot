@@ -31,7 +31,14 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 from config import Config
 from helper.database import senpailabs
 from helper.utils import get_seconds, humanbytes
-import os, sys, time, asyncio, logging, datetime, pytz, traceback
+import os
+import sys
+import time
+import asyncio
+import logging
+import datetime
+import pytz
+import traceback
 
 # pyrogram imports
 from pyrogram.types import Message
@@ -42,6 +49,7 @@ from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked, Peer
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
  
+
 @Client.on_message(filters.command(["stats", "status"]) & filters.user(Config.ADMIN))
 async def get_stats(bot, message):
     total_users = await senpailabs.total_users_count()
@@ -56,6 +64,7 @@ async def get_stats(bot, message):
     time_taken_s = (end_t - start_t) * 1000
     await senpai.edit(text=f"**--Bᴏᴛ Sᴛᴀᴛᴜꜱ--** \n\n**⌚️ Bᴏᴛ Uᴩᴛɪᴍᴇ:** {uptime} \n**🐌 Cᴜʀʀᴇɴᴛ Pɪɴɢ:** `{time_taken_s:.3f} ᴍꜱ` \n**👭 Tᴏᴛᴀʟ Uꜱᴇʀꜱ:** `{total_users}`\n**💸 ᴛᴏᴛᴀʟ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀs:** `{total_premium_users}`")
 
+
 # bot logs process 
 @Client.on_message(filters.command('logs') & filters.user(Config.ADMIN))
 async def log_file(b, m):
@@ -64,8 +73,9 @@ async def log_file(b, m):
     except Exception as e:
         await m.reply(str(e))
 
+
 @Client.on_message(filters.command(["addpremium", "add_premium"]) & filters.user(Config.ADMIN))
-async def add_premium(client, message):
+async def add_premium_cmd(client, message):
     if not client.premium:
         return await message.reply_text("premium mode disabled ✅")
      
@@ -74,7 +84,7 @@ async def add_premium(client, message):
             return await message.reply_text("Usage : /addpremium user_id Plan_Type (e.g... `Pro`, `UltraPro`) time (e.g., '1 day for days', '1 hour for hours', or '1 min for minutes', or '1 month for months' or '1 year for year')", quote=True)
 
         user_id = int(message.command[1])
-        plan_type = message.command[2]
+        plan_type = message.command[2]  # ✅ Renamed from 'type' to avoid builtin shadow
 
         if plan_type not in ["Pro", "UltraPro"]:
             return await message.reply_text("Invalid Plan Type. Please use 'Pro' or 'UltraPro'.", quote=True)
@@ -88,10 +98,8 @@ async def add_premium(client, message):
 
         if plan_type == "Pro":
             limit = 107374182400
-            type = "Pro"
         elif plan_type == "UltraPro":
             limit = 1073741824000
-            type = "UltraPro"
 
         seconds = await get_seconds(time_string)
         if seconds <= 0:
@@ -99,21 +107,43 @@ async def add_premium(client, message):
 
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         user_data = {"id": user_id, "expiry_time": expiry_time}
-        await senpailabs.addpremium(user_id, user_data, limit, type)
+        await senpailabs.add_premium(user_id, user_data, limit, plan_type)  # ✅ Fixed: was addpremium
 
         user_data = await senpailabs.get_user_data(user_id)
         limit = user_data.get('uploadlimit', 0)
-        type = user_data.get('usertype', "Free")
+        plan_type_db = user_data.get('usertype', "Free")
         data = await senpailabs.get_user(user_id)
         expiry = data.get("expiry_time")
         expiry_str_in_ist = expiry.astimezone(pytz.timezone("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
 
-        await message.reply_text(f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n👤 ᴜꜱᴇʀ : {user.mention}\n⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\nᴘʟᴀɴ :- `{type}`\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\n⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time_string}</code>\n\n⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}", quote=True, disable_web_page_preview=True)
+        await message.reply_text(
+            f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n"
+            f"👤 ᴜꜱᴇʀ : {user.mention}\n"
+            f"⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n"
+            f"ᴘʟᴀɴ :- `{plan_type_db}`\n"
+            f"ᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\n"
+            f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time_string}</code>\n\n"
+            f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
+            f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
+            quote=True, disable_web_page_preview=True
+        )
 
-        await client.send_message(
+        try:
+            await client.send_message(
                 chat_id=user_id,
-                text=f"👋 ʜᴇʏ {user.mention},\nᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time}</code>\nᴘʟᴀɴ :- `{type}`\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\n⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}", disable_web_page_preview=True              
-            )    
+                text=(
+                    f"👋 ʜᴇʏ {user.mention},\n"
+                    f"ᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n"
+                    f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time_string}</code>\n"  # ✅ Fixed: was {time} (module)
+                    f"ᴘʟᴀɴ :- `{plan_type_db}`\n"
+                    f"ᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\n"
+                    f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
+                    f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}"
+                ),
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            logger.warning(f"Failed to notify user {user_id}: {e}")
 
     else:
         if len(message.command) < 3:
@@ -132,71 +162,79 @@ async def add_premium(client, message):
 
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         user_data = {"id": user_id, "expiry_time": expiry_time}
-        await senpailabs.addpremium(user_id, user_data)
+        await senpailabs.add_premium(user_id, user_data)  # ✅ Fixed: was addpremium
         data = await senpailabs.get_user(user_id)
         expiry = data.get("expiry_time")
         expiry_str_in_ist = expiry.astimezone(pytz.timezone("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
 
-        await message.reply_text(f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n👤 ᴜꜱᴇʀ : {user.mention}\n⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time_string}</code>\n\n⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}", quote=True, disable_web_page_preview=True)
+        await message.reply_text(
+            f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n"
+            f"👤 ᴜꜱᴇʀ : {user.mention}\n"
+            f"⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n"
+            f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time_string}</code>\n\n"
+            f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
+            f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
+            quote=True, disable_web_page_preview=True
+        )
 
-        await client.send_message(
+        try:
+            await client.send_message(
                 chat_id=user_id,
-                text=f"👋 ʜᴇʏ {user.mention},\nᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time}</code>\n⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}", disable_web_page_preview=True              
-            )    
-     
+                text=(
+                    f"👋 ʜᴇʏ {user.mention},\n"
+                    f"ᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n"
+                    f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{time_string}</code>\n"  # ✅ Fixed: was {time} (module)
+                    f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
+                    f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}"
+                ),
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            logger.warning(f"Failed to notify user {user_id}: {e}")
+
 
 @Client.on_message(filters.command(["removepremium", "remove_premium"]) & filters.user(Config.ADMIN))
-async def remove_premium(bot, message):
+async def remove_premium_cmd(bot, message):
     if not bot.premium:
         return await message.reply_text("premium mode disabled ✅")
      
     if len(message.command) == 2:
-        user_id = int(message.command[1])  # Convert the user_id to integer
-        user = await bot.get_users(user_id)
+        user_id = int(message.command[1])
+        try:
+            user = await bot.get_users(user_id)
+        except Exception:
+            return await message.reply_text("Invalid user ID or user not found.", quote=True)
+            
         if await senpailabs.has_premium_access(user_id):
             await senpailabs.remove_premium(user_id)
             await message.reply_text(f"ʜᴇʏ {user.mention}, ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇᴍᴏᴠᴇᴅ.", quote=True)
-            await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {user.mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ᴛᴏ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
+            try:
+                await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {user.mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ᴛᴏ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
+            except Exception as e:
+                logger.warning(f"Failed to notify user {user_id} about premium removal: {e}")
         else:
             await message.reply_text("ᴜɴᴀʙʟᴇ ᴛᴏ ʀᴇᴍᴏᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ !\nᴀʀᴇ ʏᴏᴜ ꜱᴜʀᴇ, ɪᴛ ᴡᴀꜱ ᴀ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ ɪᴅ ?", quote=True)
     else:
         await message.reply_text("ᴜꜱᴀɢᴇ : /remove_premium ᴜꜱᴇʀ ɪᴅ", quote=True)
 
 
-# Restart to cancell all process 
+# Restart to cancel all process 
 @Client.on_message(filters.private & filters.command("restart") & filters.user(Config.ADMIN))
 async def restart_bot(b, m):
-    senpai = await b.send_message(text="**🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....**", chat_id=m.chat.id)
-    failed = 0
-    success = 0
-    deactivated = 0
-    blocked = 0
-    start_time = time.time()
-    total_users = await senpailabs.total_users_count()
-    all_users = await senpailabs.get_all_users()
-    async for user in all_users:
-        try:
-            restart_msg = f"ʜᴇʏ, {(await b.get_users(user['_id'])).mention}\n\n**🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....\n\n✅️ ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛᴇᴅ. ɴᴏᴡ ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴍᴇ.**"
-            await b.send_message(user['_id'], restart_msg)
-            success += 1
-        except InputUserDeactivated:
-            deactivated +=1
-            await senpailabs.delete_user(user['_id'])
-        except UserIsBlocked:
-            blocked +=1
-            await senpailabs.delete_user(user['_id'])
-        except Exception as e:
-            failed += 1
-            await senpailabs.delete_user(user['_id'])
-            print(e)
-            pass
-        try:
-            await senpai.edit(f"<u>ʀᴇsᴛᴀʀᴛ ɪɴ ᴩʀᴏɢʀᴇꜱꜱ:</u>\n\n• ᴛᴏᴛᴀʟ ᴜsᴇʀs: {total_users}\n• sᴜᴄᴄᴇssғᴜʟ: {success}\n• ʙʟᴏᴄᴋᴇᴅ ᴜsᴇʀs: {blocked}\n• ᴅᴇʟᴇᴛᴇᴅ ᴀᴄᴄᴏᴜɴᴛs: {deactivated}\n• ᴜɴsᴜᴄᴄᴇssғᴜʟ: {failed}")
-        except FloodWait as e:
-            await asyncio.sleep(e.value)
-    completed_restart = datetime.timedelta(seconds=int(time.time() - start_time))
-    await senpai.edit(f"ᴄᴏᴍᴘʟᴇᴛᴇᴅ ʀᴇsᴛᴀʀᴛ: {completed_restart}\n\n• ᴛᴏᴛᴀʟ ᴜsᴇʀs: {total_users}\n• sᴜᴄᴄᴇssғᴜʟ: {success}\n• ʙʟᴏᴄᴋᴇᴅ ᴜsᴇʀs: {blocked}\n• ᴅᴇʟᴇᴛᴇᴅ ᴀᴄᴄᴏᴜɴᴛs: {deactivated}\n• ᴜɴsᴜᴄᴄᴇssғᴜʟ: {failed}")
+    """✅ Restart without sending to ALL users — just restart."""
+    senpai = await b.send_message(text="**🔄 ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....**", chat_id=m.chat.id)
+    
+    # Only notify admins, not all users
+    for admin_id in Config.ADMIN:
+        if admin_id != m.chat.id:
+            try:
+                await b.send_message(admin_id, "**🔄 ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....**")
+            except Exception:
+                pass
+    
+    await senpai.edit("**✅ ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ ɴᴏᴡ...**")
     os.execl(sys.executable, sys.executable, *sys.argv)
+
 
 @Client.on_message(filters.private & filters.command("ban") & filters.user(Config.ADMIN))
 async def ban(c: Client, m: Message):
@@ -222,14 +260,13 @@ async def ban(c: Client, m: Message):
                 f"**Message from the admin**"
             )
             ban_log_text += '\n\nUser notified successfully!'
-        except:
-            traceback.print_exc()
-            ban_log_text += f"\n\nUser notification failed! \n\n`{traceback.format_exc()}`"
+        except Exception:
+            ban_log_text += f"\n\nUser notification failed!"
+            logger.warning(f"Failed to notify banned user {user_id}")
 
         await senpailabs.ban_user(user_id, ban_duration, ban_reason)
         await m.reply_text(ban_log_text, quote=True)
-    except:
-        traceback.print_exc()
+    except Exception:
         await m.reply_text(
             f"Error occoured! Traceback given below\n\n`{traceback.format_exc()}`",
             quote=True
@@ -254,13 +291,13 @@ async def unban(c: Client, m: Message):
         try:
             await c.send_message(user_id, f"Your ban was lifted!")
             unban_log_text += '\n\nUser notified successfully!'
-        except:
-            traceback.print_exc()
-            unban_log_text += f"\n\nUser notification failed! \n\n`{traceback.format_exc()}`"
+        except Exception:
+            unban_log_text += f"\n\nUser notification failed!"
+            logger.warning(f"Failed to notify unbanned user {user_id}")
+            
         await senpailabs.remove_ban(user_id)
         await m.reply_text(unban_log_text, quote=True)
-    except:
-        traceback.print_exc()
+    except Exception:
         await m.reply_text(
             f"Error occurred! Traceback given below\n\n`{traceback.format_exc()}`",
             quote=True
@@ -273,10 +310,10 @@ async def _banned_users(_, m: Message):
     banned_usr_count = 0
     text = ''
     async for banned_user in all_banned_users:
-        user_id = banned_user['id']
-        ban_duration = banned_user['ban_status']['ban_duration']
-        banned_on = banned_user['ban_status']['banned_on']
-        ban_reason = banned_user['ban_status']['ban_reason']
+        user_id = banned_user['_id']  # ✅ Fixed: was 'id', should be '_id'
+        ban_duration = banned_user.get('ban_status', {}).get('ban_duration', 'N/A')
+        banned_on = banned_user.get('ban_status', {}).get('banned_on', 'N/A')
+        ban_reason = banned_user.get('ban_status', {}).get('ban_reason', 'N/A')
         banned_usr_count += 1
         text += f"> **user_id**: `{user_id}`, **Ban Duration**: `{ban_duration}`, " \
                 f"**Banned on**: `{banned_on}`, **Reason**: `{ban_reason}`\n\n"
@@ -285,14 +322,22 @@ async def _banned_users(_, m: Message):
         with open('banned-users.txt', 'w') as f:
             f.write(reply_text)
         await m.reply_document('banned-users.txt', True)
-        os.remove('banned-users.txt')
+        try:
+            os.remove('banned-users.txt')
+        except OSError:
+            pass
         return
     await m.reply_text(reply_text, True)
 
      
 @Client.on_message(filters.command("broadcast") & filters.user(Config.ADMIN) & filters.reply)
 async def broadcast_handler(bot: Client, m: Message):
-    await bot.send_message(Config.LOG_CHANNEL, f"{m.from_user.mention} or {m.from_user.id} Iꜱ ꜱᴛᴀʀᴛᴇᴅ ᴛʜᴇ Bʀᴏᴀᴅᴄᴀꜱᴛ......")
+    """✅ Optimized broadcast with proper rate limiting for 1L+ users."""
+    try:
+        await bot.send_message(Config.LOG_CHANNEL, f"{m.from_user.mention} or {m.from_user.id} Iꜱ ꜱᴛᴀʀᴛᴇᴅ ᴛʜᴇ Bʀᴏᴀᴅᴄᴀꜱᴛ......")
+    except Exception:
+        pass
+        
     all_users = await senpailabs.get_all_users()
     broadcast_msg = m.reply_to_message
     sts_msg = await m.reply_text("Bʀᴏᴀᴅᴄᴀꜱᴛ Sᴛᴀʀᴛᴇᴅ..!") 
@@ -301,6 +346,7 @@ async def broadcast_handler(bot: Client, m: Message):
     success = 0
     start_time = time.time()
     total_users = await senpailabs.total_users_count()
+    
     async for user in all_users:
         sts = await send_msg(user['_id'], broadcast_msg)
         if sts == 200:
@@ -310,10 +356,30 @@ async def broadcast_handler(bot: Client, m: Message):
         if sts == 400:
            await senpailabs.delete_user(user['_id'])
         done += 1
-        if not done % 20:
-           await sts_msg.edit(f"Bʀᴏᴀᴅᴄᴀꜱᴛ Iɴ Pʀᴏɢʀᴇꜱꜱ: \nTᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users} \nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSᴜᴄᴄᴇꜱꜱ: {success}\nFᴀɪʟᴇᴅ: {failed}")
+        
+        # ✅ Update progress every 50 users instead of 20 (less API calls)
+        if not done % 50:
+            try:
+                await sts_msg.edit(
+                    f"Bʀᴏᴀᴅᴄᴀꜱᴛ Iɴ Pʀᴏɢʀᴇꜱꜱ: \n"
+                    f"Tᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users} \n"
+                    f"Cᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\n"
+                    f"Sᴜᴄᴄᴇꜱꜱ: {success}\nFᴀɪʟᴇᴅ: {failed}"
+                )
+            except FloodWait as e:
+                await asyncio.sleep(e.value)
+            except Exception:
+                pass
+                
     completed_in = datetime.timedelta(seconds=int(time.time() - start_time))
-    await sts_msg.edit(f"Bʀᴏᴀᴅᴄᴀꜱᴛ Cᴏᴍᴩʟᴇᴛᴇᴅ: \nCᴏᴍᴩʟᴇᴛᴇᴅ Iɴ `{completed_in}`.\n\nTᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users}\nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSᴜᴄᴄᴇꜱꜱ: {success}\nFᴀɪʟᴇᴅ: {failed}")
+    await sts_msg.edit(
+        f"Bʀᴏᴀᴅᴄᴀꜱᴛ Cᴏᴍᴩʟᴇᴛᴇᴅ: \n"
+        f"Cᴏᴍᴩʟᴇᴛᴇᴅ Iɴ `{completed_in}`.\n\n"
+        f"Tᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users}\n"
+        f"Cᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\n"
+        f"Sᴜᴄᴄᴇꜱꜱ: {success}\nFᴀɪʟᴇᴅ: {failed}"
+    )
+
            
 async def send_msg(user_id, message):
     try:
@@ -321,15 +387,15 @@ async def send_msg(user_id, message):
         return 200
     except FloodWait as e:
         await asyncio.sleep(e.value)
-        return send_msg(user_id, message)
+        return await send_msg(user_id, message)  # ✅ Fixed: added missing 'await'
     except InputUserDeactivated:
-        logger.info(f"{user_id} : Dᴇᴀᴄᴛɪᴠᴀᴛᴇᴅ")
+        logger.info(f"{user_id} : Deactivated")
         return 400
     except UserIsBlocked:
-        logger.info(f"{user_id} : Bʟᴏᴄᴋᴇᴅ Tʜᴇ Bᴏᴛ")
+        logger.info(f"{user_id} : Blocked The Bot")
         return 400
     except PeerIdInvalid:
-        logger.info(f"{user_id} : Uꜱᴇʀ Iᴅ Iɴᴠᴀʟɪᴅ")
+        logger.info(f"{user_id} : User Id Invalid")
         return 400
     except Exception as e:
         logger.error(f"{user_id} : {e}")

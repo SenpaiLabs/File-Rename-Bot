@@ -26,7 +26,7 @@ load_dotenv()
 
 import re, os, time
 
-id_pattern = re.compile(r'^.\d+$')
+id_pattern = re.compile(r'^-?\d+$')  # ✅ Fixed: was r'^.\d+$' which matched ANY char
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,7 +1,7 @@
-# Use the official Python image
-FROM python:3.9-slim-buster
+# Use the official Python image — ✅ Upgraded from 3.9-slim-buster (EOL) to 3.12-slim-bookworm
+FROM python:3.12-slim-bookworm
 
-RUN apt-get update -qq && apt-get -y install ffmpeg
+RUN apt-get update -qq && apt-get -y install ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /app

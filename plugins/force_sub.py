@@ -28,9 +28,13 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import UserNotParticipant, ChatAdminRequired
 
 # extra imports
+import logging
 from config import Config
 from helper.database import senpailabs
 import datetime 
+
+logger = logging.getLogger(__name__)
+
 
 async def not_subscribed(_, client, message):
     await senpailabs.add_user(client, message)
@@ -43,11 +47,11 @@ async def not_subscribed(_, client, message):
     except UserNotParticipant:
         return True
     except ChatAdminRequired:
-        # Bot doesn't have admin privileges, assume user is not subscribed
         return True
     except Exception as e:
-        print(f"Error checking subscription: {e}")
+        logger.warning(f"Error checking subscription: {e}")
         return False
+
 
 async def handle_banned_user_status(bot, message):
     await senpailabs.add_user(bot, message) 
@@ -60,8 +64,10 @@ async def handle_banned_user_status(bot, message):
         else:
             return await message.reply_text("Sorry Sir, 😔 You are Banned!.. Please Contact - @SenpaiLabs") 
     await message.continue_propagation()
+
     
 async def forces_sub(client, message):
+    """✅ Fixed: Only show join message when user is NOT a member."""
     buttons = [[InlineKeyboardButton(text="📢 Join Update Channel 📢", url=f"https://t.me/{Config.FORCE_SUB}")]] 
     text = "**Sᴏʀʀy Dᴜᴅᴇ Yᴏᴜ'ʀᴇ Nᴏᴛ Jᴏɪɴᴇᴅ My Cʜᴀɴɴᴇʟ 😐. Sᴏ Pʟᴇᴀꜱᴇ Jᴏɪɴ Oᴜʀ Uᴩᴅᴀᴛᴇ Cʜᴀɴɴᴇʟ Tᴏ Cᴄᴏɴᴛɪɴᴜᴇ**"
 
@@ -69,11 +75,17 @@ async def forces_sub(client, message):
         user = await client.get_chat_member(Config.FORCE_SUB, message.from_user.id)
         if user.status == enums.ChatMemberStatus.BANNED:
             return await message.reply_text("Sᴏʀʀy Yᴏᴜ'ʀᴇ Bᴀɴɴᴇᴅ Tᴏ Uꜱᴇ Mᴇ")
-        elif user.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR]:
+        # ✅ Fixed: If user IS a member/admin/owner → let them through (don't show message)
+        elif user.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
+            return  # User is subscribed, let them continue
+        else:
             return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
     except (UserNotParticipant, ChatAdminRequired):
         return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
-    return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
+    except Exception as e:
+        logger.warning(f"Force sub check error: {e}")
+        return await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(buttons))
+
     
 # (c) @SenpaiLabs
 # SenpaiLabs Developer 

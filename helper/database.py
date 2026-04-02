@@ -30,15 +30,31 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 """
 
 # database imports
-import motor.motor_asyncio, datetime, pytz
+import motor.motor_asyncio
+import datetime
+import pytz
+import logging
 
 # bots imports
 from config import Config
 from helper.utils import send_log
 
+logger = logging.getLogger(__name__)
+
+
 class Database:
     def __init__(self, uri, database_name):
-        self._client = motor.motor_asyncio.AsyncIOMotorClient(uri)
+        # ✅ Connection pooling + retry config for 1L+ users
+        self._client = motor.motor_asyncio.AsyncIOMotorClient(
+            uri,
+            maxPoolSize=50,
+            minPoolSize=10,
+            retryWrites=True,
+            retryReads=True,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=20000,
+        )
         self.db = self._client[database_name]
         self.col = self.db.user
         self.premium = self.db.premium
@@ -71,11 +87,14 @@ class Database:
         u = m.from_user
         if not await self.is_user_exist(u.id):
             user = self.new_user(u.id)
-            await self.col.insert_one(user)            
-            await send_log(b, u)
+            try:
+                await self.col.insert_one(user)
+                await send_log(b, u)
+            except Exception as e:
+                logger.error(f"Failed to add user {u.id}: {e}")
 
     async def is_user_exist(self, id):
-        user = await self.col.find_one({'_id': int(id)})
+        user = await self.col.find_one({'_id': int(id)}, {'_id': 1})
         return bool(user)
 
     async def total_users_count(self):
@@ -93,49 +112,51 @@ class Database:
         await self.col.update_one({'_id': int(id)}, {'$set': {'file_id': file_id}})
 
     async def get_thumbnail(self, id):
-        user = await self.col.find_one({'_id': int(id)})
-        return user.get('file_id', None)
+        user = await self.col.find_one({'_id': int(id)}, {'file_id': 1})
+        return user.get('file_id', None) if user else None
 
     async def set_caption(self, id, caption):
         await self.col.update_one({'_id': int(id)}, {'$set': {'caption': caption}})
 
     async def get_caption(self, id):
-        user = await self.col.find_one({'_id': int(id)})
-        return user.get('caption', None)
+        user = await self.col.find_one({'_id': int(id)}, {'caption': 1})
+        return user.get('caption', None) if user else None
 
     async def set_prefix(self, id, prefix):
         await self.col.update_one({'_id': int(id)}, {'$set': {'prefix': prefix}})
 
     async def get_prefix(self, id):
-        user = await self.col.find_one({'_id': int(id)})
-        return user.get('prefix', None)
+        user = await self.col.find_one({'_id': int(id)}, {'prefix': 1})
+        return user.get('prefix', None) if user else None
 
     async def set_suffix(self, id, suffix):
         await self.col.update_one({'_id': int(id)}, {'$set': {'suffix': suffix}})
 
     async def get_suffix(self, id):
-        user = await self.col.find_one({'_id': int(id)})
-        return user.get('suffix', None)
+        user = await self.col.find_one({'_id': int(id)}, {'suffix': 1})
+        return user.get('suffix', None) if user else None
 
     async def set_metadata_mode(self, id, bool_meta):
         await self.col.update_one({'_id': int(id)}, {'$set': {'metadata_mode': bool_meta}})
 
     async def get_metadata_mode(self, id):
-        user = await self.col.find_one({'_id': int(id)})
-        return user.get('metadata_mode', None)
+        user = await self.col.find_one({'_id': int(id)}, {'metadata_mode': 1})
+        return user.get('metadata_mode', None) if user else None
 
     async def set_metadata_code(self, id, metadata_code):
         await self.col.update_one({'_id': int(id)}, {'$set': {'metadata_code': metadata_code}})
 
     async def get_metadata_code(self, id):
-        user = await self.col.find_one({'_id': int(id)})
-        return user.get('metadata_code', None)
+        user = await self.col.find_one({'_id': int(id)}, {'metadata_code': 1})
+        return user.get('metadata_code', None) if user else None
 
     async def set_used_limit(self, id, used):
+        # ✅ Guard against negative values
+        used = max(0, int(used))
         await self.col.update_one({'_id': int(id)}, {'$set': {'used_limit': used}})
       
-    async def set_usertype(self, id, type):
-        await self.col.update_one({'_id': int(id)}, {'$set': {'usertype': type}})
+    async def set_usertype(self, id, user_type):
+        await self.col.update_one({'_id': int(id)}, {'$set': {'usertype': user_type}})
 
     async def set_uploadlimit(self, id, limit):
         await self.col.update_one({'_id': int(id)}, {'$set': {'uploadlimit': limit}})
@@ -144,9 +165,9 @@ class Database:
         await self.col.update_one({'_id': int(id)}, {'$set': {'daily': date}})
         
     async def reset_uploadlimit_access(self, user_id):
+        """Reset daily upload limit if 24 hours have passed."""
         seconds = 1440 * 60
         reset_date = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
-        zero_usage = 0
         
         user_data = await self.get_user_data(user_id)
         if user_data:
@@ -165,11 +186,12 @@ class Database:
                     {'_id': user_id}, 
                     {'$set': {
                         'daily': reset_date,
-                        'used_limit': zero_usage
+                        'used_limit': 0
                     }}
                 )
-                        
+                    
     async def get_user_data(self, id) -> dict:
+        """✅ Single query to get all user data — use this instead of multiple individual getters."""
         user_data = await self.col.find_one({'_id': int(id)})
         return user_data or None
         
@@ -177,43 +199,57 @@ class Database:
         user_data = await self.premium.find_one({"id": user_id})
         return user_data
 
-    async def add_premium(self, user_id, user_data, limit=None, type=None):    
-        await self.premium.update_one(
-            {"id": user_id}, 
-            {"$set": user_data}, 
-            upsert=True
-        )
-        
-        if Config.UPLOAD_LIMIT_MODE and limit and type:
-            await self.col.update_one(
-                {'_id': user_id}, 
-                {'$set': {
-                    'usertype': type,
-                    'uploadlimit': limit
-                }}
+    async def add_premium(self, user_id, user_data, limit=None, plan_type=None):
+        """✅ Fixed: parameter renamed from 'type' to 'plan_type' to avoid shadowing builtin."""
+        try:
+            await self.premium.update_one(
+                {"id": user_id}, 
+                {"$set": user_data}, 
+                upsert=True
             )
+            
+            if Config.UPLOAD_LIMIT_MODE and limit and plan_type:
+                await self.col.update_one(
+                    {'_id': user_id}, 
+                    {'$set': {
+                        'usertype': plan_type,
+                        'uploadlimit': limit
+                    }}
+                )
+        except Exception as e:
+            logger.error(f"Failed to add premium for {user_id}: {e}")
+            raise
     
-    async def remove_premium(self, user_id, limit=Config.FREE_UPLOAD_LIMIT, type="Free"):
-        await self.premium.update_one(
-            {"id": user_id}, 
-            {"$set": {
-                "expiry_time": None,
-                "has_free_trial": False
-            }}
-        )
-        
-        if Config.UPLOAD_LIMIT_MODE and limit and type:
-            await self.col.update_one(
-                {'_id': user_id}, 
-                {'$set': {
-                    'usertype': user_type,
-                    'uploadlimit': limit
+    async def remove_premium(self, user_id, limit=Config.FREE_UPLOAD_LIMIT, plan_type="Free"):
+        """✅ Fixed: 'user_type' NameError → renamed param to 'plan_type' and used correctly."""
+        try:
+            await self.premium.update_one(
+                {"id": user_id}, 
+                {"$set": {
+                    "expiry_time": None,
+                    "has_free_trial": False
                 }}
             )
+            
+            if Config.UPLOAD_LIMIT_MODE:
+                await self.col.update_one(
+                    {'_id': user_id}, 
+                    {'$set': {
+                        'usertype': plan_type,
+                        'uploadlimit': limit
+                    }}
+                )
+        except Exception as e:
+            logger.error(f"Failed to remove premium for {user_id}: {e}")
+            raise
           
     async def checking_remaining_time(self, user_id):
         user_data = await self.get_user(user_id)
+        if not user_data:
+            return None
         expiry_time = user_data.get("expiry_time")
+        if not expiry_time:
+            return None
         time_left_str = expiry_time - datetime.datetime.now()
         return time_left_str
 
@@ -222,12 +258,14 @@ class Database:
         if user_data:
             expiry_time = user_data.get("expiry_time")
             if expiry_time is None:
-                # User previously used the free trial, but it has ended.
                 return False
             elif isinstance(expiry_time, datetime.datetime) and datetime.datetime.now() <= expiry_time:
                 return True
             else:
-                await self.remove_premium(user_id)
+                try:
+                    await self.remove_premium(user_id)
+                except Exception as e:
+                    logger.error(f"Failed to auto-remove expired premium for {user_id}: {e}")
         return False
 
     async def total_premium_users_count(self):
@@ -283,7 +321,9 @@ class Database:
             ban_duration=0,
             banned_on=datetime.date.max.isoformat(),
             ban_reason='')
-        user = await self.col.find_one({'_id': int(id)})
+        user = await self.col.find_one({'_id': int(id)}, {'ban_status': 1})
+        if not user:
+            return default
         return user.get('ban_status', default)
 
     async def get_all_banned_users(self):

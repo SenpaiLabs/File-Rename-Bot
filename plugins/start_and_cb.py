@@ -29,7 +29,14 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 """
 
 # extra imports
-import random, asyncio, datetime, pytz, time, psutil, shutil
+import random
+import asyncio
+import datetime
+import pytz
+import time
+import psutil
+import shutil
+import logging
 
 # pyrogram imports
 from pyrogram import Client, filters
@@ -41,6 +48,8 @@ from config import Config, senpai
 from helper.utils import humanbytes
 from plugins import __version__ as _bot_version_, __developer__, __database__, __library__, __language__, __programer__
 from plugins.file_rename import upload_doc
+
+logger = logging.getLogger(__name__)
 
 upgrade_button = InlineKeyboardMarkup([[
         InlineKeyboardButton('💳 Buy Premium', url='https://t.me/ll_Yoichi_Isagi_ll'),
@@ -56,7 +65,6 @@ upgrade_trial_button = InlineKeyboardMarkup([[
 ]])
 
 
-        
 @Client.on_message(filters.private & filters.command("start"))
 async def start(client, message):
     start_button = [[        
@@ -98,10 +106,10 @@ async def myplan(client, message):
             user_data = await senpailabs.get_user_data(user_id)
             limit = user_data.get('uploadlimit', 0)
             used = user_data.get('used_limit', 0)
-            remain = int(limit) - int(used)
-            type = user_data.get('usertype', "Free")
+            remain = max(0, int(limit) - int(used))
+            plan_type = user_data.get('usertype', "Free")
 
-            text += f"ᴘʟᴀɴ :- `{type}`\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\nᴛᴏᴅᴀʏ ᴜsᴇᴅ :- `{humanbytes(used)}`\nʀᴇᴍᴀɪɴ :- `{humanbytes(remain)}`\n"
+            text += f"ᴘʟᴀɴ :- `{plan_type}`\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\nᴛᴏᴅᴀʏ ᴜsᴇᴅ :- `{humanbytes(used)}`\nʀᴇᴍᴀɪɴ :- `{humanbytes(remain)}`\n"
 
         text += f"ᴛɪᴍᴇ ʟᴇꜰᴛ : {time_left_str}\nᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}"
 
@@ -112,19 +120,23 @@ async def myplan(client, message):
             user_data = await senpailabs.get_user_data(user_id)
             limit = user_data.get('uploadlimit', 0)
             used = user_data.get('used_limit', 0)
-            remain = int(limit) - int(used)
-            type = user_data.get('usertype', "Free")
+            remain = max(0, int(limit) - int(used))
+            plan_type = user_data.get('usertype', "Free")
 
-            text = f"ᴜꜱᴇʀ :- {user}\nᴜꜱᴇʀ ɪᴅ :- <code>{user_id}</code>\nᴘʟᴀɴ :- `{type}`\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\nᴛᴏᴅᴀʏ ᴜsᴇᴅ :- `{humanbytes(used)}`\nʀᴇᴍᴀɪɴ :- `{humanbytes(remain)}`\nᴇxᴘɪʀᴇᴅ ᴅᴀᴛᴇ :- ʟɪғᴇᴛɪᴍᴇ\n\nɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇"
+            text = f"ᴜꜱᴇʀ :- {user}\nᴜꜱᴇʀ ɪᴅ :- <code>{user_id}</code>\nᴘʟᴀɴ :- `{plan_type}`\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- `{humanbytes(limit)}`\nᴛᴏᴅᴀʏ ᴜsᴇᴅ :- `{humanbytes(used)}`\nʀᴇᴍᴀɪɴ :- `{humanbytes(remain)}`\nᴇxᴘɪʀᴇᴅ ᴅᴀᴛᴇ :- ʟɪғᴇᴛɪᴍᴇ\n\nɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇"
 
             await message.reply_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='upgrade')]]), quote=True)
 
         else:
-            m=await message.reply_sticker("CAACAgIAAxkBAAIBTGVjQbHuhOiboQsDm35brLGyLQ28AAJ-GgACglXYSXgCrotQHjibHgQ")
-            await message.reply_text(f"ʜᴇʏ {user},\n\nʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴀɴʏ ᴀᴄᴛɪᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs, ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='upgrade')]]))			 
-            await asyncio.sleep(2)
-            await m.delete()
+            try:
+                m = await message.reply_sticker("CAACAgIAAxkBAAIBTGVjQbHuhOiboQsDm35brLGyLQ28AAJ-GgACglXYSXgCrotQHjibHgQ")
+                await message.reply_text(f"ʜᴇʏ {user},\n\nʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴀɴʏ ᴀᴄᴛɪᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs, ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='upgrade')]]))
+                await asyncio.sleep(2)
+                await m.delete()
+            except Exception as e:
+                logger.warning(f"Sticker send failed: {e}")
+
 
 @Client.on_message(filters.private & filters.command("plans"))
 async def plans(client, message):
@@ -169,7 +181,6 @@ async def cb_handler(client, query: CallbackQuery):
             text=senpai.HELP_TXT,
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup([[
-                #⚠️ don't change source code & source link ⚠️ #
                 InlineKeyboardButton("ᴛʜᴜᴍʙɴᴀɪʟ", callback_data = "thumbnail"),
                 InlineKeyboardButton("ᴄᴀᴘᴛɪᴏɴ", callback_data = "caption")
                 ],[          
@@ -183,8 +194,7 @@ async def cb_handler(client, query: CallbackQuery):
         
     elif data == "about":
         about_button = [[
-         #⚠️ don't change source code & source link ⚠️ #
-        InlineKeyboardButton("𝚂ᴏᴜʀᴄᴇ", callback_data = "source_code"), #Whoever is deploying this repo is given a warning ⚠️ not to remove this repo link #first & last warning ⚠️
+        InlineKeyboardButton("𝚂ᴏᴜʀᴄᴇ", callback_data = "source_code"),
         InlineKeyboardButton("ʙᴏᴛ sᴛᴀᴛᴜs", callback_data = "bot_status")
         ],[
         InlineKeyboardButton("ʟɪᴠᴇ sᴛᴀᴛᴜs", callback_data = "live_status")           
@@ -295,8 +305,6 @@ async def cb_handler(client, query: CallbackQuery):
             text=senpai.DEV_TXT,
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup([[
-                #⚠️ don't change source code & source link ⚠️ #
-           #Whoever is deploying this repo is given a warning ⚠️ not to remove this repo link #first & last warning ⚠️   
                 InlineKeyboardButton("💞 Sᴏᴜʀᴄᴇ Cᴏᴅᴇ 💞", url="https://github.com/SenpaiLabs/File-Rename-Bot")
             ],[
                 InlineKeyboardButton("🔒 Cʟᴏꜱᴇ", callback_data = "close"),
@@ -310,11 +318,16 @@ async def cb_handler(client, query: CallbackQuery):
     elif data == "close":
         try:
             await query.message.delete()
-            await query.message.reply_to_message.delete()
+            if query.message.reply_to_message:
+                await query.message.reply_to_message.delete()
             await query.message.continue_propagation()
-        except:
-            await query.message.delete()
+        except Exception:
+            try:
+                await query.message.delete()
+            except Exception:
+                pass
             await query.message.continue_propagation()
+
 
 # (c) @SenpaiLabs
 # SenpaiLabs Developer 
