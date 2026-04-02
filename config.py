@@ -62,10 +62,14 @@ class Config:
     PREMIUM_MODE        = False
 
     # ── Force Subscribe ──────────────────────────────
-    try:
-        FORCE_SUB = int(os.environ.get("FORCE_SUB", ""))
-    except (ValueError, TypeError):
-        FORCE_SUB = os.environ.get("FORCE_SUB", "SenpaiLabs")
+    _force_sub_raw = os.environ.get("FORCE_SUB", "").strip()
+    if _force_sub_raw:
+        try:
+            FORCE_SUB = int(_force_sub_raw)
+        except ValueError:
+            FORCE_SUB = _force_sub_raw  # Channel username
+    else:
+        FORCE_SUB = None  # ✅ Disabled when not set (was defaulting to "SenpaiLabs" and blocking ALL users)
 
     # ── Web Server ───────────────────────────────────
     PORT        = int(os.environ.get("PORT", "8080"))

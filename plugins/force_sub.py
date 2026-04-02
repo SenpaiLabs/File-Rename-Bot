@@ -47,7 +47,8 @@ async def not_subscribed(_, client, message):
     except UserNotParticipant:
         return True
     except ChatAdminRequired:
-        return True
+        logger.warning(f"Bot is not admin in FORCE_SUB channel: {Config.FORCE_SUB}")
+        return False
     except Exception as e:
         logger.warning(f"Error checking subscription: {e}")
         return False

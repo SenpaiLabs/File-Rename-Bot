@@ -25,7 +25,7 @@ Repo Link : https://github.com/SenpaiLabs/File-Rename-Bot
 License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 """
 
-__name__ = "File-Rename-Bot"
+__bot_name__ = "File-Rename-Bot"
 __version__ = "3.1.0"
 __license__ = " Apache License, Version 2.0"
 __copyright__ = "Copyright (C) 2022-present SenpaiLabs <https://github.com/SenpaiLabs>"
@@ -62,12 +62,20 @@ __maindeveloper__ = "<a href=https://t.me/Senpai_Updates>SenpaiLabs</a>"
 # - requirements.txt
 # - runtime.txt
 
+import logging
 from plugins.force_sub import not_subscribed, forces_sub, handle_banned_user_status
 from pyrogram import Client, filters
 
+logger = logging.getLogger(__name__)
+
 @Client.on_message(filters.private)
 async def _(bot, message):
-    await handle_banned_user_status(bot, message)
+    try:
+        await handle_banned_user_status(bot, message)
+    except Exception as e:
+        logger.warning(f"Error checking ban status: {e}")
+        await message.continue_propagation()
+    
     
 @Client.on_message(filters.private & filters.create(not_subscribed))
 async def forces_sub_handler(bot, message):
