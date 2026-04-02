@@ -31,7 +31,8 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 # pyrogram imports
 from pyrogram import Client, filters
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from pyrogram.errors import ListenerTimeout
+from pyrogram.errors import FloodWait, MessageNotModified
+import asyncio
 
 # extra imports
 import logging
@@ -94,13 +95,14 @@ async def query_metadata(bot: Client, query: CallbackQuery):
             senpai_msg = await query.message.reply_text("**Please Wait...**", reply_to_message_id=metadata.id)
             await senpailabs.set_metadata_code(query.from_user.id, metadata_code=metadata.text)
             await senpai_msg.edit("**Your Metadata Code Set Successfully ✅**")
-        except ListenerTimeout:
-            await query.message.reply_text(
-                "⚠️ Error!!\n\n**Request timed out.**\nRestart by using /metadata",
-                reply_to_message_id=query.message.id
-            )
         except Exception as e:
-            logger.error(f"Metadata set error: {e}")
+            if type(e).__name__ == "ListenerTimeout" or isinstance(e, asyncio.TimeoutError):
+                await query.message.reply_text(
+                    "⚠️ Error!!\n\n**Request timed out.**\nRestart by using /metadata",
+                    reply_to_message_id=query.message.id
+                )
+            else:
+                logger.error(f"Metadata set error: {e}")
 
 
 # SenpaiLabs Developer 
