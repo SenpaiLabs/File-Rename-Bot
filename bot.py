@@ -42,6 +42,27 @@ from pathlib import Path
 from pyrogram import Client, __version__, errors
 from pyrogram.raw.all import layer
 from pyrogram import idle
+from pyrogram.session.session import Session
+
+if sys.platform != 'win32':
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except ImportError:
+        pass
+
+# --- Patch Pyrogram Session.stop to fix read() RuntimeError on concurrent task disconnects (Python 3.12 issue) ---
+_original_stop = Session.stop
+async def _patched_stop(self, *args, **kwargs):
+    try:
+        await _original_stop(self, *args, **kwargs)
+    except RuntimeError as e:
+        if "read() called while another coroutine is already waiting" in str(e):
+            logging.warning("Handled Session.stop asyncio stream RuntimeError gracefully.")
+        else:
+            raise
+Session.stop = _patched_stop
+# ----------------------------------------------------------------------------------------------------------------
 
 # bots imports
 from config import Config
