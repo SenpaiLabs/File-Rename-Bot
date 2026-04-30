@@ -48,7 +48,7 @@ from config import Config
 
 # extra imports
 from asyncio import sleep
-import os, time, asyncio
+import os, time, asyncio, datetime
 
 
 UPLOAD_TEXT = """Uploading Started...."""
@@ -210,39 +210,158 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
 
 
 #@Client.on_callback_query(filters.regex("upload"))
-_ACTIVE_UPLOADS = set()
+_UPLOAD_QUEUE_RUNNERS = {}
+
+
+def _upload_task_id(user_id, chat_id, message_id):
+    return f"{int(user_id)}:{int(chat_id)}:{int(message_id)}"
+
+
+def _safe_task_dir(task_id):
+    return str(task_id).replace(":", "_").replace("/", "_")
+
+
+async def _remove_empty_dir(path):
+    try:
+        if path and os.path.isdir(path) and not os.listdir(path):
+            os.rmdir(path)
+    except Exception:
+        pass
+
+
+async def _cleanup_upload_files(*paths, dirs=None):
+    await remove_path(*paths)
+    for directory in dirs or []:
+        await _remove_empty_dir(directory)
+
+
+def _start_upload_queue_runner(bot, user_id):
+    runner = _UPLOAD_QUEUE_RUNNERS.get(int(user_id))
+    if runner and not runner.done():
+        return
+    _UPLOAD_QUEUE_RUNNERS[int(user_id)] = asyncio.create_task(_run_upload_queue(bot, int(user_id)))
+
+
+async def resume_upload_queues(bot):
+    await senpailabs.reset_running_upload_tasks()
+    user_ids = await senpailabs.get_upload_queue_users()
+    for user_id in user_ids:
+        _start_upload_queue_runner(bot, user_id)
 
 
 async def upload_doc(bot, update):
-    upload_key = (update.message.chat.id, update.message.id)
-    if upload_key in _ACTIVE_UPLOADS:
-        try:
-            await update.answer("Already processing this file. Please wait.", show_alert=True)
-        except Exception:
-            pass
+    task, error = await _build_upload_task(update)
+    if error:
+        await safe_edit_message(update.message, error)
         return
 
-    _ACTIVE_UPLOADS.add(upload_key)
+    await senpailabs.reset_stale_upload_tasks(task['user_id'])
+    added = await senpailabs.add_upload_task(task)
+    if not added:
+        try:
+            await update.answer("This file is already in queue.", show_alert=True)
+        except Exception:
+            pass
+        _start_upload_queue_runner(bot, task['user_id'])
+        return
+
+    queue_size = await senpailabs.count_user_upload_tasks(task['user_id'])
     try:
-        return await _upload_doc(bot, update)
+        await update.answer("Added to upload queue.", show_alert=False)
+    except Exception:
+        pass
+
+    if queue_size > Config.UPLOAD_QUEUE_LIMIT:
+        await safe_edit_message(
+            update.message,
+            f"`Queued...`\n\nPosition: `{queue_size}`\nOnly `{Config.UPLOAD_QUEUE_LIMIT}` files process at a time."
+        )
+    else:
+        await safe_edit_message(update.message, "`Queued...`")
+
+    _start_upload_queue_runner(bot, task['user_id'])
+
+
+async def _build_upload_task(update):
+    if not update.message:
+        return None, "Upload message not found. Please send the file again."
+
+    file = update.message.reply_to_message
+    if not file or not file.media:
+        return None, "Original file not found. Please send the file again and rename it."
+
+    new_name = update.message.text
+    if not new_name or ":-" not in new_name:
+        return None, "File name not found. Please send the file again and enter a new name."
+
+    new_filename = new_name.split(":-", 1)[1].strip()
+    if not new_filename:
+        return None, "File name is empty. Please send the file again and enter a valid name."
+
+    upload_type = update.data.split("#", 1)[1] if "#" in update.data else None
+    if upload_type not in ["document", "video", "audio"]:
+        return None, "Unknown upload type. Please select a valid output format."
+
+    user_id = int(update.from_user.id)
+    chat_id = int(update.message.chat.id)
+    task_id = _upload_task_id(user_id, chat_id, update.message.id)
+    return {
+        '_id': task_id,
+        'user_id': user_id,
+        'chat_id': chat_id,
+        'control_message_id': int(update.message.id),
+        'source_message_id': int(file.id),
+        'new_filename': new_filename,
+        'upload_type': upload_type,
+        'status': 'queued',
+        'created_at': datetime.datetime.utcnow()
+    }, None
+
+
+async def _run_upload_queue(bot, user_id):
+    try:
+        await asyncio.sleep(1)
+        while True:
+            tasks = await senpailabs.claim_upload_tasks(user_id, Config.UPLOAD_QUEUE_LIMIT)
+            if not tasks:
+                break
+            await asyncio.gather(*[_process_upload_task(bot, task) for task in tasks])
     finally:
-        _ACTIVE_UPLOADS.discard(upload_key)
+        _UPLOAD_QUEUE_RUNNERS.pop(int(user_id), None)
 
 
-async def _upload_doc(bot, update):
-    senpai_processing = await safe_edit_message(update.message, "`Processing...`") or update.message
-    
-    # Creating directories for downloads and metadata
+async def _process_upload_task(bot, task):
+    try:
+        return await _upload_doc(bot, task)
+    except Exception as e:
+        print(f"Upload queue task failed: {e}")
+        try:
+            message = await bot.get_messages(int(task['chat_id']), int(task['control_message_id']))
+            if message:
+                await safe_edit_message(message, f"Upload Error: {e}")
+        except Exception:
+            pass
+    finally:
+        await senpailabs.delete_upload_task(task['_id'])
+
+
+async def _upload_doc(bot, task):
     os.makedirs("Renames", exist_ok=True)
     os.makedirs("Metadata", exist_ok=True)
 
-    user_id = int(update.message.chat.id) 
-    new_name = update.message.text
-    if not new_name or ":-" not in new_name:
-        return await safe_edit_message(senpai_processing, "File name not found. Please send the file again and enter a new name.")
-    new_filename_ = new_name.split(":-", 1)[1].strip()
-    if not new_filename_:
-        return await safe_edit_message(senpai_processing, "File name is empty. Please send the file again and enter a valid name.")
+    user_id = int(task['user_id'])
+    chat_id = int(task['chat_id'])
+    senpai_processing = await bot.get_messages(chat_id, int(task['control_message_id']))
+    if not senpai_processing:
+        return
+
+    await safe_edit_message(senpai_processing, "`Processing...`")
+
+    file = await bot.get_messages(chat_id, int(task['source_message_id']))
+    if not file or not file.media:
+        return await safe_edit_message(senpai_processing, "Original file not found. Please send the file again and rename it.")
+
+    new_filename_ = task['new_filename']
     user_data = await senpailabs.get_user_data(user_id)
 
     try:
@@ -253,15 +372,17 @@ async def _upload_doc(bot, update):
     except Exception as e:
         return await safe_edit_message(senpai_processing, f"⚠️ Something went wrong can't able to set Prefix or Suffix ☹️ \n\n❄️ Contact My Creator -> @SenpaiLabs\nError: {e}")
 
-    # msg file location 
-    file = update.message.reply_to_message
-    if not file or not file.media:
-        return await safe_edit_message(senpai_processing, "Original file not found. Please send the file again and rename it.")
     media = getattr(file, file.media.value)
     
     # File paths for download and metadata
-    file_path = f"Renames/{new_filename}"
-    metadata_path = f"Metadata/{new_filename}"
+    task_dir = _safe_task_dir(task['_id'])
+    rename_dir = os.path.join("Renames", task_dir)
+    metadata_dir = os.path.join("Metadata", task_dir)
+    os.makedirs(rename_dir, exist_ok=True)
+    os.makedirs(metadata_dir, exist_ok=True)
+    file_path = os.path.join(rename_dir, new_filename)
+    metadata_path = os.path.join(metadata_dir, new_filename)
+    ph_path = None
 
     await safe_edit_message(senpai_processing, "`Try To Download....`")
     if bot.premium and bot.uploadlimit:
@@ -275,6 +396,7 @@ async def _upload_doc(bot, update):
     except Exception as e:
         if bot.premium and bot.uploadlimit:
             await senpailabs.set_used_limit(user_id, used)
+        await _cleanup_upload_files(file_path, metadata_path, dirs=[rename_dir, metadata_dir])
         return await safe_edit_message(senpai_processing, f"Download Error: {e}")
 
     metadata_mode = await senpailabs.get_metadata_mode(user_id)
@@ -306,7 +428,6 @@ async def _upload_doc(bot, update):
         print(f"Error extracting metadata: {e}")
         pass
         
-    ph_path = None
     c_caption = user_data.get('caption', None)
     c_thumb = user_data.get('file_id', None)
 
@@ -317,6 +438,7 @@ async def _upload_doc(bot, update):
          except Exception as e:
              if bot.premium and bot.uploadlimit:
                  await senpailabs.set_used_limit(user_id, used)
+             await _cleanup_upload_files(ph_path, file_path, dl_path, metadata_path, dirs=[rename_dir, metadata_dir])
              return await safe_edit_message(senpai_processing, text=f"Yᴏᴜʀ Cᴀᴩᴛɪᴏɴ Eʀʀᴏʀ Exᴄᴇᴩᴛ Kᴇyᴡᴏʀᴅ Aʀɢᴜᴍᴇɴᴛ ●> ({e})")
     else:
          caption = f"**{new_filename}**"
@@ -338,7 +460,7 @@ async def _upload_doc(bot, update):
              print(f"Error processing thumbnail: {e}")
              ph_path = None
 
-    upload_type = update.data.split("#")[1]
+    upload_type = task['upload_type']
     
     # Use the correct file path based on metadata mode
     final_file_path = metadata_path if metadata_mode and os.path.exists(metadata_path) else file_path
@@ -353,31 +475,31 @@ async def _upload_doc(bot, update):
         if error:
             if bot.premium and bot.uploadlimit:
                 await senpailabs.set_used_limit(user_id, used)
-            await remove_path(ph_path, file_path, dl_path, metadata_path)
+            await _cleanup_upload_files(ph_path, file_path, dl_path, metadata_path, dirs=[rename_dir, metadata_dir])
             return await safe_edit_message(senpai_processing, f"Upload Error: {error}")
 
         
         from_chat = filw.chat.id
         mg_id = filw.id
         await asyncio.sleep(2)
-        await bot.copy_message(update.from_user.id, from_chat, mg_id)
+        await bot.copy_message(user_id, from_chat, mg_id)
         await bot.delete_messages(from_chat, mg_id)
         
     else:
         # Upload file using unified function for regular files
         filw, error = await upload_files(
-            bot, update.message.chat.id, upload_type, final_file_path, 
+            bot, chat_id, upload_type, final_file_path,
             ph_path, caption, duration, senpai_processing
         )
                    
         if error:
             if bot.premium and bot.uploadlimit:
                 await senpailabs.set_used_limit(user_id, used)
-            await remove_path(ph_path, file_path, dl_path, metadata_path)
+            await _cleanup_upload_files(ph_path, file_path, dl_path, metadata_path, dirs=[rename_dir, metadata_dir])
             return await safe_edit_message(senpai_processing, f"Upload Error: {error}")
 
     # Clean up files
-    await remove_path(ph_path, file_path, dl_path, metadata_path)
+    await _cleanup_upload_files(ph_path, file_path, dl_path, metadata_path, dirs=[rename_dir, metadata_dir])
     return await safe_edit_message(senpai_processing, "Uploaded Successfully....")
 
 

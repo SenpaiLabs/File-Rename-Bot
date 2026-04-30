@@ -60,6 +60,7 @@ class Config:
     FREE_UPLOAD_LIMIT   = 6 * 1024 * 1024 * 1024   # 6 GB
     UPLOAD_LIMIT_MODE   = True
     PREMIUM_MODE        = False
+    UPLOAD_QUEUE_LIMIT  = max(1, int(os.environ.get("UPLOAD_QUEUE_LIMIT", "2")))
 
     # ── Force Subscribe ──────────────────────────────
     try:

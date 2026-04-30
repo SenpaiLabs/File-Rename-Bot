@@ -42,6 +42,7 @@ class Database:
         self.db = self._client[database_name]
         self.col = self.db.user
         self.premium = self.db.premium
+        self.upload_queue = self.db.upload_queue
 
     def new_user(self, id):
         return dict(
@@ -289,6 +290,60 @@ class Database:
     async def get_all_banned_users(self):
         banned_users = self.col.find({'ban_status.is_banned': True})
         return banned_users
+
+    async def add_upload_task(self, task):
+        result = await self.upload_queue.update_one(
+            {'_id': task['_id']},
+            {'$setOnInsert': task},
+            upsert=True
+        )
+        return result.upserted_id is not None
+
+    async def count_user_upload_tasks(self, user_id):
+        return await self.upload_queue.count_documents({
+            'user_id': int(user_id),
+            'status': {'$in': ['queued', 'running']}
+        })
+
+    async def claim_upload_tasks(self, user_id, limit):
+        cursor = self.upload_queue.find({
+            'user_id': int(user_id),
+            'status': 'queued'
+        }).sort('created_at', 1).limit(limit)
+        tasks = await cursor.to_list(length=limit)
+        task_ids = [task['_id'] for task in tasks]
+        if task_ids:
+            await self.upload_queue.update_many(
+                {'_id': {'$in': task_ids}},
+                {'$set': {
+                    'status': 'running',
+                    'started_at': datetime.datetime.utcnow()
+                }}
+            )
+        return tasks
+
+    async def reset_stale_upload_tasks(self, user_id, minutes=60):
+        cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)
+        await self.upload_queue.update_many(
+            {
+                'user_id': int(user_id),
+                'status': 'running',
+                'started_at': {'$lt': cutoff}
+            },
+            {'$set': {'status': 'queued'}}
+        )
+
+    async def reset_running_upload_tasks(self):
+        await self.upload_queue.update_many(
+            {'status': 'running'},
+            {'$set': {'status': 'queued'}}
+        )
+
+    async def get_upload_queue_users(self):
+        return await self.upload_queue.distinct('user_id', {'status': 'queued'})
+
+    async def delete_upload_task(self, task_id):
+        await self.upload_queue.delete_one({'_id': task_id})
         
 senpailabs = Database(Config.DB_URL, Config.DB_NAME)
 
