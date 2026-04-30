@@ -30,20 +30,52 @@ License Link : https://github.com/SenpaiLabs/File-Rename-Bot/blob/main/LICENSE
 """
 
 # extra imports
-import math, time, re, datetime, pytz, os
+import asyncio, math, time, re, datetime, pytz, os
 from config import Config, senpai 
 
 # pyrogram imports
+from pyrogram.errors import FloodWait, MessageNotModified
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+PROGRESS_UPDATE_INTERVAL = 10
+_PROGRESS_STATE = {}
+
+
+async def safe_edit_message(message, *args, **kwargs):
+    try:
+        return await message.edit(*args, **kwargs)
+    except MessageNotModified:
+        return message
+    except FloodWait as e:
+        if e.value <= 5:
+            await asyncio.sleep(e.value)
+            try:
+                return await message.edit(*args, **kwargs)
+            except Exception:
+                return message
+        return message
+    except Exception:
+        return message
 
 async def progress_for_pyrogram(current, total, ud_type, message, start):
     now = time.time()
-    diff = now - start
-    if round(diff % 5.00) == 0 or current == total:        
+    diff = max(now - start, 1)
+    chat = getattr(message, "chat", None)
+    key = (getattr(chat, "id", None), getattr(message, "id", id(message)))
+    state = _PROGRESS_STATE.get(key, {})
+    is_finished = current >= total
+
+    if now < state.get("skip_until", 0):
+        return
+
+    if not is_finished and now - state.get("last_edit", 0) < PROGRESS_UPDATE_INTERVAL:
+        return
+
+    if total:
         percentage = current * 100 / total
-        speed = current / diff
+        speed = current / diff if current else 0
         elapsed_time = round(diff) * 1000
-        time_to_completion = round((total - current) / speed) * 1000
+        time_to_completion = round((total - current) / speed) * 1000 if speed else 0
         estimated_total_time = elapsed_time + time_to_completion
 
         elapsed_time = TimeFormatter(milliseconds=elapsed_time)
@@ -60,12 +92,19 @@ async def progress_for_pyrogram(current, total, ud_type, message, start):
             humanbytes(speed),            
             estimated_total_time if estimated_total_time != '' else "0 s"
         )
+        _PROGRESS_STATE[key] = {"last_edit": now}
         try:
             await message.edit(
                 text=f"{ud_type}\n\n{tmp}",               
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ 𝙲𝙰𝙽𝙲𝙴𝙻 ✖️", callback_data="close")]])                                               
             )
-        except:
+            if is_finished:
+                _PROGRESS_STATE.pop(key, None)
+        except MessageNotModified:
+            pass
+        except FloodWait as e:
+            _PROGRESS_STATE[key] = {"last_edit": now, "skip_until": now + e.value}
+        except Exception:
             pass
 
 def humanbytes(size):    

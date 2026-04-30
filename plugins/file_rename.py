@@ -41,7 +41,7 @@ from hachoir.parser import createParser
 from PIL import Image
 
 # bots imports
-from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix, remove_path
+from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix, remove_path, safe_edit_message
 from helper.database import senpailabs
 from helper.ffmpeg import change_metadata
 from config import Config
@@ -127,7 +127,14 @@ async def refunc(client, message):
         new_name = message.text 
         await message.delete() 
         msg = await client.get_messages(message.chat.id, reply_message.id)
-        file = msg.reply_to_message
+        file = msg.reply_to_message if msg else None
+        if not file or not file.media:
+            await client.send_message(message.chat.id, "Original file not found. Please send the file again and rename it.")
+            try:
+                await reply_message.delete()
+            except Exception:
+                pass
+            return
         media = getattr(file, file.media.value)
         if not "." in new_name:
             if media and hasattr(media, 'file_name') and media.file_name and "." in media.file_name:
@@ -203,16 +210,39 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
 
 
 #@Client.on_callback_query(filters.regex("upload"))
+_ACTIVE_UPLOADS = set()
+
+
 async def upload_doc(bot, update):
-    senpai_processing = await update.message.edit("`Processing...`")
+    upload_key = (update.message.chat.id, update.message.id)
+    if upload_key in _ACTIVE_UPLOADS:
+        try:
+            await update.answer("Already processing this file. Please wait.", show_alert=True)
+        except Exception:
+            pass
+        return
+
+    _ACTIVE_UPLOADS.add(upload_key)
+    try:
+        return await _upload_doc(bot, update)
+    finally:
+        _ACTIVE_UPLOADS.discard(upload_key)
+
+
+async def _upload_doc(bot, update):
+    senpai_processing = await safe_edit_message(update.message, "`Processing...`") or update.message
     
-    # Creating Directory for Metadata
-    if not os.path.isdir("Metadata"):
-        os.mkdir("Metadata")
+    # Creating directories for downloads and metadata
+    os.makedirs("Renames", exist_ok=True)
+    os.makedirs("Metadata", exist_ok=True)
 
     user_id = int(update.message.chat.id) 
     new_name = update.message.text
-    new_filename_ = new_name.split(":-")[1]
+    if not new_name or ":-" not in new_name:
+        return await safe_edit_message(senpai_processing, "File name not found. Please send the file again and enter a new name.")
+    new_filename_ = new_name.split(":-", 1)[1].strip()
+    if not new_filename_:
+        return await safe_edit_message(senpai_processing, "File name is empty. Please send the file again and enter a valid name.")
     user_data = await senpailabs.get_user_data(user_id)
 
     try:
@@ -221,17 +251,19 @@ async def upload_doc(bot, update):
         suffix = user_data.get('suffix', None)
         new_filename = await add_prefix_suffix(new_filename_, prefix, suffix)
     except Exception as e:
-        return await senpai_processing.edit(f"⚠️ Something went wrong can't able to set Prefix or Suffix ☹️ \n\n❄️ Contact My Creator -> @SenpaiLabs\nError: {e}")
+        return await safe_edit_message(senpai_processing, f"⚠️ Something went wrong can't able to set Prefix or Suffix ☹️ \n\n❄️ Contact My Creator -> @SenpaiLabs\nError: {e}")
 
     # msg file location 
     file = update.message.reply_to_message
+    if not file or not file.media:
+        return await safe_edit_message(senpai_processing, "Original file not found. Please send the file again and rename it.")
     media = getattr(file, file.media.value)
     
     # File paths for download and metadata
     file_path = f"Renames/{new_filename}"
     metadata_path = f"Metadata/{new_filename}"
 
-    await senpai_processing.edit("`Try To Download....`")
+    await safe_edit_message(senpai_processing, "`Try To Download....`")
     if bot.premium and bot.uploadlimit:
         limit = user_data.get('uploadlimit', 0)
         used = user_data.get('used_limit', 0)        
@@ -242,26 +274,25 @@ async def upload_doc(bot, update):
         dl_path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=(DOWNLOAD_TEXT, senpai_processing, time.time()))                    
     except Exception as e:
         if bot.premium and bot.uploadlimit:
-            used_remove = int(used) - int(media.file_size)
-            await senpailabs.set_used_limit(user_id, used_remove)
-        return await senpai_processing.edit(f"Download Error: {e}")
+            await senpailabs.set_used_limit(user_id, used)
+        return await safe_edit_message(senpai_processing, f"Download Error: {e}")
 
     metadata_mode = await senpailabs.get_metadata_mode(user_id)
     if metadata_mode:        
         metadata = await senpailabs.get_metadata_code(user_id)
         if metadata:
-            await senpai_processing.edit("I Fᴏᴜɴᴅ Yᴏᴜʀ Mᴇᴛᴀᴅᴀᴛᴀ\n\n__**Pʟᴇᴀsᴇ Wᴀɪᴛ...**__\n**Aᴅᴅɪɴɢ Mᴇᴛᴀᴅᴀᴛᴀ Tᴏ Fɪʟᴇ....**")            
+            await safe_edit_message(senpai_processing, "I Fᴏᴜɴᴅ Yᴏᴜʀ Mᴇᴛᴀᴅᴀᴛᴀ\n\n__**Pʟᴇᴀsᴇ Wᴀɪᴛ...**__\n**Aᴅᴅɪɴɢ Mᴇᴛᴀᴅᴀᴛᴀ Tᴏ Fɪʟᴇ....**")
             if await change_metadata(dl_path, metadata_path, metadata):            
-                await senpai_processing.edit("Metadata Added.....")
+                await safe_edit_message(senpai_processing, "Metadata Added.....")
                 print("Metadata Added.....")
             else:
-                await senpai_processing.edit("Failed to add metadata, uploading original file...")
+                await safe_edit_message(senpai_processing, "Failed to add metadata, uploading original file...")
                 metadata_mode = False
         else:
-            await senpai_processing.edit("No metadata found, uploading original file...")
+            await safe_edit_message(senpai_processing, "No metadata found, uploading original file...")
             metadata_mode = False
     else:
-        await senpai_processing.edit("`Try To Uploading....`")
+        await safe_edit_message(senpai_processing, "`Try To Uploading....`")
         
     duration = 0
     try:
@@ -285,9 +316,8 @@ async def upload_doc(bot, update):
              caption = c_caption.format(filename=new_filename, filesize=humanbytes(media.file_size), duration=convert(duration))
          except Exception as e:
              if bot.premium and bot.uploadlimit:
-                 used_remove = int(used) - int(media.file_size)
-                 await senpailabs.set_used_limit(user_id, used_remove)
-             return await senpai_processing.edit(text=f"Yᴏᴜʀ Cᴀᴩᴛɪᴏɴ Eʀʀᴏʀ Exᴄᴇᴩᴛ Kᴇyᴡᴏʀᴅ Aʀɢᴜᴍᴇɴᴛ ●> ({e})")             
+                 await senpailabs.set_used_limit(user_id, used)
+             return await safe_edit_message(senpai_processing, text=f"Yᴏᴜʀ Cᴀᴩᴛɪᴏɴ Eʀʀᴏʀ Exᴄᴇᴩᴛ Kᴇyᴡᴏʀᴅ Aʀɢᴜᴍᴇɴᴛ ●> ({e})")
     else:
          caption = f"**{new_filename}**"
  
@@ -322,10 +352,9 @@ async def upload_doc(bot, update):
 
         if error:
             if bot.premium and bot.uploadlimit:
-                used_remove = int(used) - int(media.file_size)
-                await senpailabs.set_used_limit(user_id, used_remove)
+                await senpailabs.set_used_limit(user_id, used)
             await remove_path(ph_path, file_path, dl_path, metadata_path)
-            return await senpai_processing.edit(f"Upload Error: {error}")
+            return await safe_edit_message(senpai_processing, f"Upload Error: {error}")
 
         
         from_chat = filw.chat.id
@@ -343,14 +372,13 @@ async def upload_doc(bot, update):
                    
         if error:
             if bot.premium and bot.uploadlimit:
-                used_remove = int(used) - int(media.file_size)
-                await senpailabs.set_used_limit(user_id, used_remove)
+                await senpailabs.set_used_limit(user_id, used)
             await remove_path(ph_path, file_path, dl_path, metadata_path)
-            return await senpai_processing.edit(f"Upload Error: {error}")        
+            return await safe_edit_message(senpai_processing, f"Upload Error: {error}")
 
     # Clean up files
     await remove_path(ph_path, file_path, dl_path, metadata_path)
-    return await senpai_processing.edit("Uploaded Successfully....")
+    return await safe_edit_message(senpai_processing, "Uploaded Successfully....")
 
 
 # @SenpaiLabs
